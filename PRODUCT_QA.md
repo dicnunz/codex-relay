@@ -13,6 +13,9 @@ The product is ready to show only when these are true:
 - Telegram images are saved privately and attached to Codex.
 - The demo video is readable in the first three seconds and shows Telegram -> LaunchAgent -> Codex CLI -> Mac.
 - The README explains latency as real Codex runtime, not instant chat latency.
+- `./scripts/fresh_clone_test.sh` passes from a clean checkout.
+- macOS CI runs syntax, smoke, and local demo checks.
+- `./scripts/status_ui.sh` opens a private local status page.
 - Local latency probe on 2026-04-25: trivial `gpt-5.5` xhigh Codex CLI request returned in about 4.8-6.3 seconds before Telegram delivery.
 - The README explains power and risk without hype.
 - Public copy says unofficial and local-first.
@@ -26,6 +29,8 @@ The product is ready to show only when these are true:
 - Local `gpt-5.5` image check works through `/Applications/Codex.app/Contents/Resources/codex`.
 - Real Telegram image round trip works: Telegram photo + caption -> private attachment save -> Codex `--image` -> Telegram reply.
 - Generated demo is 1280x720 H.264.
+- Fresh clone test passes without Telegram secrets.
+- Status UI renders from the live `status.sh` output.
 
 ## Public Proof Points
 
@@ -36,6 +41,7 @@ The product is ready to show only when these are true:
 - Runtime state lives under `~/Library/Application Support/CodexRelay`.
 - Runtime jobs expose `/jobs`, `/cancel`, and `/history` without logging prompts or responses.
 - Verification path is `./scripts/doctor.sh` plus `./scripts/status.sh`.
+- Clean-checkout path is `./scripts/fresh_clone_test.sh`.
 
 ## Latency QA
 

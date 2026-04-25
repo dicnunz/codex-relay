@@ -1,0 +1,17 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python syntax
+        run: python3 -m py_compile codex_relay.py scripts/configure.py scripts/smoke_test.py
+      - name: Smoke tests
+        run: PYTHONPATH="$PWD" python3 scripts/smoke_test.py
+      - name: Local demo
+        run: ./scripts/demo.sh

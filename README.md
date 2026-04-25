@@ -1,5 +1,7 @@
 # Codex Relay
 
+[![ci](https://github.com/dicnunz/codex-relay/actions/workflows/ci.yml/badge.svg)](https://github.com/dicnunz/codex-relay/actions/workflows/ci.yml)
+
 Text your Mac's Codex from Telegram. Local. No VNC. No hosted relay.
 
 <p align="center">
@@ -118,6 +120,8 @@ The installer:
 6. Installs and starts the LaunchAgent.
 7. Runs `doctor.sh` so setup failures are caught immediately.
 
+It also runs a small preflight first so obvious local blockers fail before you paste credentials.
+
 After install, DM your bot:
 
 ```text
@@ -175,10 +179,14 @@ Use `/brief` for phone-friendly answers and `/verbose` when you want debugging d
 ```bash
 ./scripts/doctor.sh
 ./scripts/status.sh
+./scripts/status_ui.sh
 ./scripts/demo.sh
+./scripts/fresh_clone_test.sh
 ```
 
 `doctor.sh` checks the Mac environment, Codex CLI, local config, LaunchAgent, runtime copy, Python syntax, and smoke tests.
+
+`status_ui.sh` opens a private local status page generated from `status.sh`. `fresh_clone_test.sh` clones the repo into a temp folder and proves the no-secrets demo path works from a clean checkout.
 
 Runtime files:
 
@@ -192,6 +200,8 @@ Update later with:
 ```bash
 ./scripts/update.sh
 ```
+
+CI runs the same syntax, smoke, and local demo checks on macOS.
 
 ## Safety
 

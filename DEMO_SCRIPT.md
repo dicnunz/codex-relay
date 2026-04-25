@@ -17,6 +17,12 @@ assets/social-card.svg
 assets/demo-transcript.svg
 ```
 
+Local status page:
+
+```bash
+./scripts/status_ui.sh
+```
+
 ## Story
 
 ```text

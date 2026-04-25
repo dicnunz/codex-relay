@@ -16,7 +16,7 @@ printf "remote: Telegram -> LaunchAgent -> Codex CLI -> this Mac\n\n"
 
 printf "Telegram > /tools\n"
 printf "Working: job 8f31c2a0\n"
-printf "Computer Use ok; Telegram running; ChatGPT Atlas running\n\n"
+printf "Codex checks the local toolbelt and reports exact blockers.\n\n"
 
 printf "Telegram > send a screenshot and ask what changed\n"
 printf "Working: job 34bd91aa; attachments: 1 image\n"

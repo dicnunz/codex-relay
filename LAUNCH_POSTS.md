@@ -16,6 +16,19 @@ https://github.com/dicnunz/codex-relay
 
 Attach: `assets/codex-relay-demo.mp4`
 
+## Second Launch Post
+
+```text
+Codex Relay is now the cleaner version of the idea:
+
+Telegram DM -> local LaunchAgent -> Codex CLI on your Mac -> Telegram reply.
+
+It has images, jobs/cancel/history, brief/verbose modes, latency/status, macOS CI, a fresh-clone test, and a tiny local status page.
+
+Unofficial/local-first:
+github.com/dicnunz/codex-relay
+```
+
 ## Alternate Short
 
 ```text
@@ -65,7 +78,7 @@ This is exactly the gap I tried to make small: not VNC, not a phone terminal, no
 
 Telegram DM -> local LaunchAgent -> Codex app CLI on the Mac -> Telegram reply.
 
-It supports screenshots/images, named threads, jobs/cancel/history, latency/status checks, brief/verbose modes, and a guardrailed /automations inspection shortcut.
+It supports screenshots/images, named threads, jobs/cancel/history, latency/status checks, brief/verbose modes, macOS CI, a local status page, and a guardrailed /automations inspection shortcut.
 
 github.com/dicnunz/codex-relay
 ```

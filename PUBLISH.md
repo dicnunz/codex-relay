@@ -23,6 +23,8 @@ Before publishing:
 python3 -m py_compile codex_relay.py scripts/configure.py
 ./scripts/doctor.sh
 ./scripts/status.sh
+./scripts/fresh_clone_test.sh
+./scripts/record_demo.sh
 ```
 
 ## X Launch
@@ -73,6 +75,7 @@ Those can work. Codex Relay is the smaller shape when you want task-level Codex 
 - Poster: `assets/codex-relay-demo-poster.png`
 - Social preview: `assets/social-card.svg`
 - README transcript: `assets/demo-transcript.svg`
+- Local status page: `./scripts/status_ui.sh`
 
 Before posting, make sure the first frame still shows the complete flow: Telegram -> LaunchAgent -> Codex CLI -> Mac.
 
@@ -83,6 +86,18 @@ Best demo shape:
 3. Mac visibly runs local Codex.
 4. Telegram receives the final answer.
 5. End on the repo quickstart, not a marketing slide.
+
+Second-post angle:
+
+```text
+Codex Relay is now the cleaner version of the idea:
+
+Telegram DM -> local LaunchAgent -> Codex CLI on your Mac -> Telegram reply.
+
+Images, jobs/cancel/history, brief/verbose modes, latency/status, macOS CI, fresh-clone test, and a tiny local status page.
+
+github.com/dicnunz/codex-relay
+```
 
 ## Human-Only Boundary
 

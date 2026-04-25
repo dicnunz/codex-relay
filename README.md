@@ -10,7 +10,7 @@ Text your bot from your phone. A LaunchAgent on your Mac runs the local Codex ap
 
 That is the product: Telegram is the remote, Codex is the engine, and your Mac is the machine doing the work.
 
-Use this when VNC is the wrong shape and a PWA/app-server setup is more surface area than you want: no tiny desktop, no Cloudflare Access, no server to maintain. You text Codex, your Mac does the work.
+Use this when VNC is the wrong shape and a PWA/app-server setup is more surface area than you want: no tiny desktop, no Cloudflare Access, no web app server to maintain. You text Codex, your Mac does the work.
 
 > Unofficial project. Not affiliated with OpenAI or Telegram.
 
@@ -57,8 +57,8 @@ It is not instant chat. A `/ping` is immediate, but a normal request waits for C
 - Named Codex threads: `/new`, `/use`, `/list`, `/reset`.
 - Per-thread folders: `/cd`, `/where`, `/home`.
 - Telegram photos and image documents passed to Codex with `--image`.
-- `/automations` shortcut for a safe Codex automation inspection.
-- Mac-side files, repos, shell, Computer Use, Browser Use, apps, and subagents when your local Codex runtime exposes them.
+- `/automations` shortcut for a guardrailed Codex automation inspection.
+- Mac-side files, repos, shell, images, and whatever tools your local Codex runtime exposes.
 - macOS LaunchAgent so the relay stays running after setup.
 - Local config only. No hosted relay account.
 
@@ -164,6 +164,7 @@ Codex Relay is intentionally powerful. If you expose your Telegram bot, you are 
 - `.env` is private and gitignored.
 - Runtime config is copied with `0600` permissions.
 - Only the allow-listed Telegram user/chat can run Codex.
+- Group chats are disabled unless `CODEX_TELEGRAM_ALLOW_GROUP_CHATS=true`.
 - Images are stored in the private runtime state directory and pruned by retention settings.
 - High-risk actions can still hit Codex/OpenAI/macOS confirmations.
 - It cannot bypass logins, MFA, macOS privacy prompts, site safety barriers, account limits, or mandatory confirmations.

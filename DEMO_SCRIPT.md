@@ -23,7 +23,7 @@ assets/demo-transcript.svg
 Telegram is the remote.
 Your Mac runs the local Codex app CLI.
 The reply comes back when Codex finishes.
-Images, apps, shell, Computer Use, automations, and subagents work when your local Codex runtime exposes them.
+Images, repos, shell, automations, and local Codex tools work when your runtime exposes them.
 ```
 
 ## Shot List
@@ -56,7 +56,7 @@ Images, apps, shell, Computer Use, automations, and subagents work when your loc
 ```text
 Codex Relay is a Telegram remote for Codex on your Mac.
 
-You text the bot. A local LaunchAgent calls the Codex app CLI. Codex works on the Mac with gpt-5.5 and xhigh reasoning by default, then replies in Telegram when the run finishes.
+You text the bot. A local LaunchAgent calls the Codex app CLI. Codex works on the Mac, then replies in Telegram when the run finishes.
 
 Status commands are quick. Real repo, image, browser, and tool tasks take as long as the local Codex run takes.
 

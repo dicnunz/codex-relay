@@ -63,7 +63,7 @@ This is exactly the gap I tried to make small: not VNC, not a phone terminal, no
 
 Telegram DM -> local LaunchAgent -> Codex app CLI on the Mac -> Telegram reply.
 
-It supports screenshots/images, named threads, jobs/cancel/history, and a safe /automations path.
+It supports screenshots/images, named threads, jobs/cancel/history, and a guardrailed /automations inspection shortcut.
 
 github.com/dicnunz/codex-relay
 ```
@@ -92,13 +92,13 @@ Unofficial. Local-first. Uses your normal Codex/OpenAI account.
 Use this if someone asks "how fast is it?" or "why does it take a while?":
 
 ```text
-It is not trying to be instant chat. Telegram is just the remote; the Mac still starts the local Codex CLI, runs gpt-5.5 with xhigh reasoning, uses whatever tools the local runtime exposes, and sends the final reply back. A trivial probe on my Mac was about 5-6s. Real repo/browser/image tasks can take tens of seconds or minutes.
+It is not trying to be instant chat. Telegram is just the remote; the Mac still starts the local Codex CLI, uses whatever tools the local runtime exposes, and sends the final reply back. A trivial probe on my Mac was about 5-6s. Real repo/browser/image tasks can take tens of seconds or minutes.
 ```
 
 Short version:
 
 ```text
-Same latency as a local Codex run, plus Telegram. Trivial gpt-5.5 xhigh probe was ~5s here; real tool work is usually tens of seconds or more.
+Same latency as a local Codex run, plus Telegram. Trivial prompt was ~5s here; real tool work is usually tens of seconds or more.
 ```
 
 ## Comment Reply

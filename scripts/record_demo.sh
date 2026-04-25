@@ -37,9 +37,9 @@ write_social() {
     <circle cx="30" cy="22" r="6" fill="#ef4444"/>
     <circle cx="52" cy="22" r="6" fill="#f59e0b"/>
     <circle cx="74" cy="22" r="6" fill="#22c55e"/>
-    <text x="34" y="86" fill="#a7f3d0" font-family="Menlo, monospace" font-size="17">$ codex exec --model gpt-5.5</text>
+    <text x="34" y="86" fill="#a7f3d0" font-family="Menlo, monospace" font-size="17">$ codex exec</text>
     <text x="34" y="126" fill="#e5e5e5" font-family="Menlo, monospace" font-size="17">jobs, cancel, history</text>
-    <text x="34" y="160" fill="#e5e5e5" font-family="Menlo, monospace" font-size="17">images, automations, Computer Use</text>
+    <text x="34" y="160" fill="#e5e5e5" font-family="Menlo, monospace" font-size="17">images, automations, local tools</text>
     <text x="34" y="194" fill="#e5e5e5" font-family="Menlo, monospace" font-size="17">reply with a receipt</text>
     <rect x="34" y="224" width="206" height="34" rx="17" fill="#f5f5f5"/>
     <text x="54" y="247" fill="#111111" font-family="Arial, sans-serif" font-size="15" font-weight="700">local LaunchAgent</text>
@@ -71,7 +71,7 @@ write_transcript() {
     <text x="134" y="443" fill="#ffffff">/history</text>
 
     <rect x="322" y="500" width="454" height="58" rx="22" fill="#171717" stroke="#333333"/>
-    <text x="348" y="536" fill="#f5f5f5">ok; automations; 18.4s; xhigh</text>
+    <text x="348" y="536" fill="#f5f5f5">ok; automations; 18.4s; receipt</text>
   </g>
 </svg>
 SVG
@@ -143,7 +143,7 @@ write_frame "$TMP/frame1.svg" \
   "/alive" \
   "Mac is live" \
   "LaunchAgent running" \
-  "gpt-5.5 via Codex app CLI" \
+  "Codex app CLI" \
   "no hosted relay"
 
 write_frame "$TMP/frame2.svg" \

@@ -8,7 +8,9 @@ import os
 import sys
 import threading
 import json
+import time
 from pathlib import Path
+from typing import Optional
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -25,7 +27,7 @@ class FakeTelegram(relay.TelegramAPI):
     def __init__(self) -> None:
         self.calls: list[tuple[str, dict[str, object]]] = []
 
-    def call(self, method: str, params: dict[str, object] | None = None) -> dict[str, object]:
+    def call(self, method: str, params: Optional[dict[str, object]] = None) -> dict[str, object]:
         self.calls.append((method, params or {}))
         return {"ok": True, "result": {}}
 
@@ -60,6 +62,27 @@ def main() -> int:
     assert_true("attached to this Codex prompt" in prompt, "expected image prompt note")
     assert_true(relay.extract_session_id("Session ID: 12345678-1234-1234-1234-123456789abc"), "expected session id")
     assert_true(relay.env_bool("MISSING_TEST_BOOL", True), "expected default bool support")
+    assert_true(relay.authorized(1, 2, "private", {1}, {2}), "expected private allowlist match")
+    assert_true(not relay.authorized(1, 2, "private", {1}, {3}), "expected both user and chat to match")
+    assert_true(not relay.authorized(1, -100, "group", {1}, {-100}), "expected groups disabled by default")
+    os.environ["CODEX_TELEGRAM_ALLOW_GROUP_CHATS"] = "true"
+    assert_true(relay.authorized(1, -100, "group", {1}, {-100}), "expected explicit group opt-in")
+    os.environ.pop("CODEX_TELEGRAM_ALLOW_GROUP_CHATS", None)
+
+    fake_enroll = FakeTelegram()
+    relay.handle_message(
+        fake_enroll,
+        {
+            "message_id": 1,
+            "chat": {"id": -100, "type": "group"},
+            "from": {"id": 1},
+            "text": "/start",
+        },
+        set(),
+        set(),
+        Path("/tmp/codex-relay-unused-threads.json"),
+    )
+    assert_true(not fake_enroll.calls, "expected group enrollment to stay silent by default")
 
     fake = FakeTelegram()
     os.environ.pop("CODEX_TELEGRAM_REPLY_TO_MESSAGES", None)
@@ -80,6 +103,7 @@ def main() -> int:
     }
     status = relay.status_text(thread)
     assert_true("reply threading: disabled" in status, "expected reply threading status")
+    assert_true("group chats: disabled" in status, "expected group chat status")
     assert_true("reasoning effort: xhigh" in status, "expected default xhigh reasoning status")
     assert_true("running jobs: 0" in status, "expected running job count")
     assert_true("last run: ok; 1.2s; 1 image" in status, "expected last-run latency status")
@@ -161,6 +185,25 @@ def main() -> int:
         assert_true("last_latency_seconds" in stats, "expected latency stats")
         assert_true(stats["last_reasoning_effort"] == "xhigh", "expected reasoning stats")
 
+        failing_codex = Path(tmp) / "failing-codex"
+        failing_codex.write_text(
+            "#!/bin/sh\n"
+            "echo 'SECRET_TOKEN_SHOULD_NOT_LEAK' >&2\n"
+            "exit 9\n"
+        )
+        failing_codex.chmod(0o700)
+        os.environ["CODEX_BIN"] = str(failing_codex)
+        try:
+            answer, _session_id, stats = relay.run_codex("fail", {"workdir": tmp, "name": "main"})
+        finally:
+            if old_codex_bin is None:
+                os.environ.pop("CODEX_BIN", None)
+            else:
+                os.environ["CODEX_BIN"] = old_codex_bin
+        assert_true("SECRET_TOKEN_SHOULD_NOT_LEAK" not in answer, "expected stderr redaction")
+        assert_true("exit 9" in answer, "expected exit code in sanitized failure")
+        assert_true(stats["last_status"] == "failed", "expected failed status")
+
         slow_codex = Path(tmp) / "slow-codex"
         slow_codex.write_text(
             "#!/bin/sh\n"
@@ -187,6 +230,50 @@ def main() -> int:
                 os.environ["CODEX_BIN"] = old_codex_bin
         assert_true("Canceled:" in answer, "expected canceled answer")
         assert_true(stats["last_status"] == "canceled", "expected canceled status")
+
+        child_pid_file = Path(tmp) / "child.pid"
+        process_tree_codex = Path(tmp) / "process-tree-codex"
+        process_tree_codex.write_text(
+            "#!/usr/bin/python3\n"
+            "import pathlib, subprocess\n"
+            f"pidfile = pathlib.Path({str(child_pid_file)!r})\n"
+            "child = subprocess.Popen(['sleep', '30'], start_new_session=True)\n"
+            "pidfile.write_text(str(child.pid))\n"
+            "child.wait()\n"
+        )
+        process_tree_codex.chmod(0o700)
+        os.environ["CODEX_BIN"] = str(process_tree_codex)
+        cancel_event = threading.Event()
+
+        def cancel_after_child(_process: object) -> None:
+            deadline = time.time() + 5
+            while not child_pid_file.exists() and time.time() < deadline:
+                time.sleep(0.05)
+            cancel_event.set()
+
+        try:
+            answer, _session_id, stats = relay.run_codex(
+                "cancel process tree",
+                {"workdir": tmp, "name": "main"},
+                cancel_event=cancel_event,
+                process_callback=cancel_after_child,
+            )
+            child_pid = int(child_pid_file.read_text())
+            time.sleep(0.1)
+            try:
+                os.kill(child_pid, 0)
+            except OSError:
+                child_alive = False
+            else:
+                child_alive = True
+        finally:
+            if old_codex_bin is None:
+                os.environ.pop("CODEX_BIN", None)
+            else:
+                os.environ["CODEX_BIN"] = old_codex_bin
+        assert_true("Canceled:" in answer, "expected process tree cancel answer")
+        assert_true(stats["last_status"] == "canceled", "expected process tree canceled status")
+        assert_true(not child_alive, "expected descendant process to be stopped")
 
         if old_state_dir is None:
             os.environ.pop("CODEX_TELEGRAM_STATE_DIR", None)

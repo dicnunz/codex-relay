@@ -13,6 +13,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from typing import Optional
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -56,6 +57,7 @@ def save_env(values: dict[str, str]) -> None:
         "CODEX_TELEGRAM_TIMEOUT_SECONDS",
         "CODEX_TELEGRAM_REPLY_TO_MESSAGES",
         "CODEX_TELEGRAM_REPLY_UNAUTHORIZED",
+        "CODEX_TELEGRAM_ALLOW_GROUP_CHATS",
         "CODEX_TELEGRAM_TYPING_INTERVAL_SECONDS",
         "CODEX_TELEGRAM_MAX_IMAGE_BYTES",
         "CODEX_TELEGRAM_IMAGE_RETENTION_DAYS",
@@ -69,7 +71,7 @@ def save_env(values: dict[str, str]) -> None:
     private_write(ENV_PATH, "\n".join(lines) + "\n")
 
 
-def telegram_call(token: str, method: str, params: dict[str, str] | None = None) -> dict:
+def telegram_call(token: str, method: str, params: Optional[dict[str, str]] = None) -> dict:
     data = urllib.parse.urlencode(params or {}).encode()
     request = urllib.request.Request(
         f"https://api.telegram.org/bot{token}/{method}",
@@ -156,6 +158,7 @@ def main() -> int:
             "CODEX_TELEGRAM_TIMEOUT_SECONDS": values.get("CODEX_TELEGRAM_TIMEOUT_SECONDS") or "600",
             "CODEX_TELEGRAM_REPLY_TO_MESSAGES": values.get("CODEX_TELEGRAM_REPLY_TO_MESSAGES") or "false",
             "CODEX_TELEGRAM_REPLY_UNAUTHORIZED": values.get("CODEX_TELEGRAM_REPLY_UNAUTHORIZED") or "false",
+            "CODEX_TELEGRAM_ALLOW_GROUP_CHATS": values.get("CODEX_TELEGRAM_ALLOW_GROUP_CHATS") or "false",
             "CODEX_TELEGRAM_TYPING_INTERVAL_SECONDS": values.get("CODEX_TELEGRAM_TYPING_INTERVAL_SECONDS") or "4",
             "CODEX_TELEGRAM_MAX_IMAGE_BYTES": values.get("CODEX_TELEGRAM_MAX_IMAGE_BYTES") or "20971520",
             "CODEX_TELEGRAM_IMAGE_RETENTION_DAYS": values.get("CODEX_TELEGRAM_IMAGE_RETENTION_DAYS") or "7",

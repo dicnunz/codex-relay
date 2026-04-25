@@ -17,6 +17,9 @@ fi
 mkdir -p "$HOME/Library/LaunchAgents" "$RUNTIME" "$STATE_DIR"
 chmod 700 "$RUNTIME" "$STATE_DIR"
 umask 077
+: > "$STATE_DIR/launchd.out"
+: > "$STATE_DIR/launchd.err"
+chmod 600 "$STATE_DIR/launchd.out" "$STATE_DIR/launchd.err"
 
 install -m 700 "$ROOT/codex_relay.py" "$RUNTIME/codex_relay.py"
 
@@ -76,6 +79,8 @@ cat > "$PLIST" <<PLIST
   <true/>
   <key>KeepAlive</key>
   <true/>
+  <key>Umask</key>
+  <integer>63</integer>
   <key>StandardOutPath</key>
   <string>$STATE_DIR/launchd.out</string>
   <key>StandardErrorPath</key>

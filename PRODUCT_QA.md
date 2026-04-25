@@ -53,7 +53,7 @@ Expected behavior:
 Public answer:
 
 ```text
-It is not instant chat. Telegram is just the remote; the Mac still starts the local Codex CLI, runs gpt-5.5 with xhigh reasoning, uses whatever local tools are available, and then sends the final reply back. Simple checks can be quick, but real repo/browser/image tasks often take tens of seconds or minutes. The default timeout is 10 minutes.
+It is not instant chat. Telegram is just the remote; the Mac still starts the local Codex CLI, uses whatever local tools are available, and then sends the final reply back. Simple checks can be quick, but real repo/browser/image tasks often take tens of seconds or minutes. The default timeout is 10 minutes.
 ```
 
 ## Current Human-Only Checks

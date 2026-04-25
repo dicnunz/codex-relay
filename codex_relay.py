@@ -28,6 +28,7 @@ ENV_PATH = ROOT / ".env"
 STATE_DIR_DEFAULT = ROOT / ".codex-relay-state"
 TELEGRAM_LIMIT = 4096
 DEFAULT_THREAD = "main"
+TOOL_PROBE_THREAD = "tool-probe"
 DEFAULT_TIMEOUT_SECONDS = 600
 DEFAULT_MAX_IMAGE_BYTES = 20 * 1024 * 1024
 DEFAULT_IMAGE_RETENTION_DAYS = 7
@@ -38,6 +39,9 @@ SESSION_RE = re.compile(r"session id:\s*([0-9a-fA-F-]{36})", re.IGNORECASE)
 THREAD_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,39}$")
 STARTED_AT = time.time()
 THREADS_LOCK = threading.Lock()
+SHUTDOWN_EVENT = threading.Event()
+WORKERS_LOCK = threading.Lock()
+WORKERS: list[threading.Thread] = []
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".heif"}
 IMAGE_SUFFIX_BY_MIME = {
     "image/gif": ".gif",
@@ -290,7 +294,7 @@ class RelayJob:
         with self.lock:
             process = self.process
         if process is not None:
-            stop_process(process)
+            signal_process(process, signal.SIGTERM)
 
     def elapsed(self) -> str:
         return duration_text(time.monotonic() - self.started_monotonic)
@@ -325,6 +329,43 @@ def find_job(chat_id: int, job_id: str) -> Optional[RelayJob]:
     if job and job.chat_id == chat_id:
         return job
     return None
+
+
+def cancel_all_jobs() -> None:
+    with JOBS_LOCK:
+        jobs = list(ACTIVE_JOBS.values())
+    for job in jobs:
+        job.cancel()
+
+
+def register_worker(worker: threading.Thread) -> None:
+    with WORKERS_LOCK:
+        WORKERS.append(worker)
+
+
+def cleanup_workers() -> None:
+    with WORKERS_LOCK:
+        WORKERS[:] = [worker for worker in WORKERS if worker.is_alive()]
+
+
+def join_workers(timeout: float = 10.0) -> None:
+    deadline = time.monotonic() + timeout
+    while True:
+        cleanup_workers()
+        with WORKERS_LOCK:
+            workers = list(WORKERS)
+        if not workers:
+            return
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return
+        workers[0].join(timeout=min(1.0, remaining))
+
+
+def request_shutdown(_signum: int, _frame: object) -> None:
+    SHUTDOWN_EVENT.set()
+    cancel_all_jobs()
+    raise KeyboardInterrupt
 
 
 def state_dir() -> Path:
@@ -531,6 +572,17 @@ def set_active_thread(data: dict[str, Any], chat_id: int, name: str) -> None:
     data.setdefault("active_by_chat", {})[str(chat_id)] = name
 
 
+def active_state(threads_path: Path, chat_id: int) -> tuple[dict[str, Any], str, dict[str, Any]]:
+    data = read_threads(threads_path)
+    active_missing = str(chat_id) not in data.setdefault("active_by_chat", {})
+    active_name = active_thread_name(data, chat_id)
+    thread = ensure_thread(data, chat_id, active_name)
+    set_active_thread(data, chat_id, active_name)
+    if active_missing:
+        write_threads(threads_path, data)
+    return data, active_name, thread
+
+
 def normalize_thread_name(raw: str) -> str:
     name = raw.strip().lower().replace(" ", "-")
     if not name:
@@ -577,13 +629,18 @@ def resolve_workdir(raw: str, current: str) -> Path:
 def authorized(
     user_id: Optional[int],
     chat_id: int,
+    chat_type: str,
     allowed_users: set[int],
     allowed_chats: set[int],
 ) -> bool:
-    if allowed_users and user_id in allowed_users:
-        return True
-    if allowed_chats and chat_id in allowed_chats:
-        return True
+    if chat_type != "private" and not env_bool("CODEX_TELEGRAM_ALLOW_GROUP_CHATS", False):
+        return False
+    if allowed_users and allowed_chats:
+        return user_id in allowed_users and chat_id in allowed_chats
+    if allowed_users:
+        return user_id in allowed_users
+    if allowed_chats:
+        return chat_id in allowed_chats
     return False
 
 
@@ -663,15 +720,50 @@ def extract_session_id(output: str) -> str:
     return match.group(1) if match else ""
 
 
+def child_pids(pid: int) -> list[int]:
+    try:
+        result = subprocess.run(
+            ["pgrep", "-P", str(pid)],
+            capture_output=True,
+            text=True,
+            timeout=1,
+            check=False,
+        )
+    except Exception:
+        return []
+    children = [int(line) for line in result.stdout.splitlines() if line.strip().isdigit()]
+    descendants: list[int] = []
+    for child in children:
+        descendants.append(child)
+        descendants.extend(child_pids(child))
+    return descendants
+
+
+def signal_pid_group(pid: int, sig: signal.Signals) -> None:
+    if pid <= 0 or pid == os.getpid():
+        return
+    try:
+        pgid = os.getpgid(pid)
+    except OSError:
+        pgid = 0
+    if pgid > 0 and pgid != os.getpgrp():
+        try:
+            os.killpg(pgid, sig)
+            return
+        except OSError:
+            pass
+    try:
+        os.kill(pid, sig)
+    except OSError:
+        pass
+
+
 def signal_process(process: subprocess.Popen[str], sig: signal.Signals) -> None:
     if process.poll() is None:
-        try:
-            os.killpg(process.pid, sig)
-        except OSError:
-            try:
-                process.send_signal(sig)
-            except OSError:
-                pass
+        descendants = child_pids(process.pid)
+        for pid in reversed(descendants):
+            signal_pid_group(pid, sig)
+        signal_pid_group(process.pid, sig)
 
 
 def stop_process(process: subprocess.Popen[str]) -> tuple[str, str]:
@@ -810,16 +902,8 @@ def run_codex(
         return finish("Canceled: job stopped before Codex replied.", session_id, "canceled")
 
     if returncode != 0:
-        error_output = (stderr or stdout or "").strip()[:1200]
-        if error_output:
-            return finish(
-                f"Codex failed with exit {returncode}:\n{error_output}",
-                session_id,
-                "failed",
-                returncode,
-            )
         return finish(
-            f"Codex failed with exit {returncode}.",
+            f"Codex failed with exit {returncode}. Run local diagnostics with ./scripts/doctor.sh.",
             session_id,
             "failed",
             returncode,
@@ -868,6 +952,7 @@ def status_text(thread: dict[str, Any], chat_id: Optional[int] = None) -> str:
         f"approval: {os.environ.get('CODEX_TELEGRAM_APPROVAL', 'never')}",
         f"timeout: {env_int('CODEX_TELEGRAM_TIMEOUT_SECONDS', DEFAULT_TIMEOUT_SECONDS)}s",
         f"reply threading: {'enabled' if env_bool('CODEX_TELEGRAM_REPLY_TO_MESSAGES', False) else 'disabled'}",
+        f"group chats: {'enabled' if env_bool('CODEX_TELEGRAM_ALLOW_GROUP_CHATS', False) else 'disabled'}",
         f"typing interval: {max(1, env_int('CODEX_TELEGRAM_TYPING_INTERVAL_SECONDS', 4))}s",
         "telegram images: enabled",
         f"running jobs: {len(running)}",
@@ -1033,6 +1118,8 @@ def run_job_worker(
     thread_snapshot: dict[str, Any],
     image_paths: list[Path],
     job: RelayJob,
+    persist_thread_state: bool = True,
+    record_history: bool = True,
 ) -> None:
     try:
         with TypingPulse(api, chat_id):
@@ -1043,14 +1130,18 @@ def run_job_worker(
                 job.cancel_event,
                 job.set_process,
             )
-        with THREADS_LOCK:
-            data = read_threads(threads_path)
-            thread = ensure_thread(data, chat_id, thread_name)
-            if session_id:
-                thread["session_id"] = session_id
-            record_run_stats(thread, stats)
-            thread["updated_at"] = now_iso()
-            write_threads(threads_path, data)
+        if persist_thread_state:
+            with THREADS_LOCK:
+                data = read_threads(threads_path)
+                thread = ensure_thread(data, chat_id, thread_name)
+                if session_id:
+                    thread["session_id"] = session_id
+                record_run_stats(thread, stats)
+                thread["updated_at"] = now_iso()
+                write_threads(threads_path, data)
+        else:
+            thread = dict(thread_snapshot)
+        if record_history:
             append_history_event(
                 history_event_from_stats(chat_id, thread_name, thread, job, stats)
             )
@@ -1069,6 +1160,7 @@ def run_job_worker(
         api.send_message(chat_id, f"Relay job failed: {exc}")
     finally:
         finish_job(job)
+        cleanup_workers()
 
 
 def start_background_job(
@@ -1080,6 +1172,8 @@ def start_background_job(
     prompt_text: str,
     image_paths: Optional[list[Path]] = None,
     reply_to_message_id: Optional[int] = None,
+    persist_thread_state: bool = True,
+    record_history: bool = True,
 ) -> None:
     image_paths = image_paths or []
     running_thread_jobs = jobs_for_thread(chat_id, thread_name)
@@ -1092,14 +1186,35 @@ def start_background_job(
         )
         return
     job = RelayJob(chat_id, thread_name, len(image_paths))
+    try:
+        api.send_message(chat_id, job_ack_text(job), reply_to_message_id)
+    except Exception:
+        finish_job(job)
+        raise
     register_job(job)
-    api.send_message(chat_id, job_ack_text(job), reply_to_message_id)
     worker = threading.Thread(
         target=run_job_worker,
-        args=(api, chat_id, threads_path, thread_name, prompt_text, dict(thread), image_paths, job),
-        daemon=True,
+        args=(
+            api,
+            chat_id,
+            threads_path,
+            thread_name,
+            prompt_text,
+            dict(thread),
+            image_paths,
+            job,
+            persist_thread_state,
+            record_history,
+        ),
+        daemon=False,
     )
-    worker.start()
+    register_worker(worker)
+    try:
+        worker.start()
+    except Exception:
+        finish_job(job)
+        cleanup_workers()
+        raise
 
 
 def capabilities_text() -> str:
@@ -1149,6 +1264,7 @@ def handle_message(
     chat_id = int_or_none(chat.get("id"))
     if chat_id is None:
         return
+    chat_type = str(chat.get("type") or "private")
     user_id = sender.get("id")
     if user_id is not None:
         user_id = int_or_none(user_id)
@@ -1156,8 +1272,14 @@ def handle_message(
     text = (message.get("text") or message.get("caption") or "").strip()
     image_specs = image_attachment_specs(message)
 
+    allow_group_chats = env_bool("CODEX_TELEGRAM_ALLOW_GROUP_CHATS", False)
+    if chat_type != "private" and not allow_group_chats:
+        return
+
     enrollment_mode = not allowed_users and not allowed_chats
     if enrollment_mode:
+        if chat_type != "private":
+            return
         api.send_message(
             chat_id,
             "Enrollment mode. I will not run Codex yet.\n"
@@ -1168,7 +1290,7 @@ def handle_message(
         )
         return
 
-    if not authorized(user_id, chat_id, allowed_users, allowed_chats):
+    if not authorized(user_id, chat_id, chat_type, allowed_users, allowed_chats):
         if env_bool("CODEX_TELEGRAM_REPLY_UNAUTHORIZED", False):
             api.send_message(chat_id, "Not authorized.", message_id)
         return
@@ -1190,13 +1312,7 @@ def handle_message(
         return
 
     with THREADS_LOCK:
-        data = read_threads(threads_path)
-        active_missing = str(chat_id) not in data.setdefault("active_by_chat", {})
-        active_name = active_thread_name(data, chat_id)
-        ensure_thread(data, chat_id, active_name)
-        set_active_thread(data, chat_id, active_name)
-        if active_missing:
-            write_threads(threads_path, data)
+        data, active_name, _active_thread = active_state(threads_path, chat_id)
 
     if command == "/new":
         try:
@@ -1204,11 +1320,13 @@ def handle_message(
         except ValueError as exc:
             api.send_message(chat_id, str(exc), message_id)
             return
-        thread = ensure_thread(data, chat_id, name)
-        thread["session_id"] = ""
-        thread["updated_at"] = now_iso()
-        set_active_thread(data, chat_id, name)
-        write_threads(threads_path, data)
+        with THREADS_LOCK:
+            data, _active_name, _active_thread = active_state(threads_path, chat_id)
+            thread = ensure_thread(data, chat_id, name)
+            thread["session_id"] = ""
+            thread["updated_at"] = now_iso()
+            set_active_thread(data, chat_id, name)
+            write_threads(threads_path, data)
         api.send_message(chat_id, f"New thread: {name}", message_id)
         return
 
@@ -1218,63 +1336,75 @@ def handle_message(
         except ValueError as exc:
             api.send_message(chat_id, str(exc), message_id)
             return
-        threads = chat_threads(data, chat_id)
-        if name not in threads:
-            api.send_message(chat_id, f"No thread named `{name}`. Use `/new {name}`.", message_id)
-            return
-        set_active_thread(data, chat_id, name)
-        write_threads(threads_path, data)
+        with THREADS_LOCK:
+            data, _active_name, _active_thread = active_state(threads_path, chat_id)
+            threads = chat_threads(data, chat_id)
+            if name not in threads:
+                api.send_message(chat_id, f"No thread named `{name}`. Use `/new {name}`.", message_id)
+                return
+            set_active_thread(data, chat_id, name)
+            write_threads(threads_path, data)
         api.send_message(chat_id, f"Using thread: {name}", message_id)
         return
 
     if command in {"/list", "/threads"}:
-        threads = chat_threads(data, chat_id)
-        names = sorted(threads) or [DEFAULT_THREAD]
-        lines = []
-        for name in names:
-            marker = "*" if name == active_name else "-"
-            thread = threads.get(name, {})
-            started = "started" if thread.get("session_id") else "new"
-            folder = Path(str(thread.get("workdir", default_workdir()))).name or str(thread.get("workdir"))
-            lines.append(f"{marker} {name} ({started}) {folder}")
+        with THREADS_LOCK:
+            data, active_name, _active_thread = active_state(threads_path, chat_id)
+            threads = chat_threads(data, chat_id)
+            names = sorted(threads) or [DEFAULT_THREAD]
+            lines = []
+            for name in names:
+                marker = "*" if name == active_name else "-"
+                thread = threads.get(name, {})
+                started = "started" if thread.get("session_id") else "new"
+                folder = Path(str(thread.get("workdir", default_workdir()))).name or str(thread.get("workdir"))
+                lines.append(f"{marker} {name} ({started}) {folder}")
         api.send_message(chat_id, "\n".join(lines), message_id)
         return
 
     if command == "/where":
-        thread = ensure_thread(data, chat_id, active_name)
+        with THREADS_LOCK:
+            _data, active_name, thread = active_state(threads_path, chat_id)
         status = "started" if thread.get("session_id") else "new"
         api.send_message(chat_id, f"{active_name} ({status})\n{thread.get('workdir')}", message_id)
         return
 
     if command in {"/cd", "/repo"}:
-        thread = ensure_thread(data, chat_id, active_name)
+        with THREADS_LOCK:
+            data, active_name, thread = active_state(threads_path, chat_id)
+            current_workdir = str(thread.get("workdir") or default_workdir())
         try:
-            path = resolve_workdir(arg, str(thread.get("workdir") or default_workdir()))
+            path = resolve_workdir(arg, current_workdir)
         except ValueError as exc:
             api.send_message(chat_id, str(exc), message_id)
             return
-        thread["workdir"] = str(path)
-        thread["updated_at"] = now_iso()
-        write_threads(threads_path, data)
+        with THREADS_LOCK:
+            data, active_name, thread = active_state(threads_path, chat_id)
+            thread["workdir"] = str(path)
+            thread["updated_at"] = now_iso()
+            write_threads(threads_path, data)
         api.send_message(chat_id, f"Folder set:\n{path}", message_id)
         return
 
     if command == "/home":
-        thread = ensure_thread(data, chat_id, active_name)
         path = Path.home()
-        thread["workdir"] = str(path)
-        thread["updated_at"] = now_iso()
-        write_threads(threads_path, data)
+        with THREADS_LOCK:
+            data, active_name, thread = active_state(threads_path, chat_id)
+            thread["workdir"] = str(path)
+            thread["updated_at"] = now_iso()
+            write_threads(threads_path, data)
         api.send_message(chat_id, f"Folder set:\n{path}", message_id)
         return
 
     if command == "/status":
-        thread = ensure_thread(data, chat_id, active_name)
+        with THREADS_LOCK:
+            _data, _active_name, thread = active_state(threads_path, chat_id)
         api.send_message(chat_id, status_text(thread, chat_id), message_id)
         return
 
     if command in {"/jobs", "/job"}:
-        thread = ensure_thread(data, chat_id, active_name)
+        with THREADS_LOCK:
+            _data, _active_name, thread = active_state(threads_path, chat_id)
         api.send_message(chat_id, jobs_text(chat_id, thread), message_id)
         return
 
@@ -1287,7 +1417,8 @@ def handle_message(
         return
 
     if command == "/alive":
-        thread = ensure_thread(data, chat_id, active_name)
+        with THREADS_LOCK:
+            _data, _active_name, thread = active_state(threads_path, chat_id)
         api.send_message(chat_id, alive_text(thread), message_id)
         return
 
@@ -1300,7 +1431,8 @@ def handle_message(
         return
 
     if command in {"/automations", "/automation"}:
-        thread = ensure_thread(data, chat_id, active_name)
+        with THREADS_LOCK:
+            _data, active_name, thread = active_state(threads_path, chat_id)
         prompt_text = (
             "Inspect this Mac's Codex automations from live local state. "
             "Do not print secrets, raw logs, session transcripts, auth files, or private message content. "
@@ -1319,24 +1451,28 @@ def handle_message(
         return
 
     if command == "/tools":
-        probe = {
-            "name": "tool-probe",
-            "session_id": "",
-            "workdir": default_workdir(),
-        }
-        with TypingPulse(api, chat_id):
-            answer, _session_id, _stats = run_codex(
-                "Use Computer Use to list running apps. Reply with a terse toolbelt status: Computer Use ok/not ok, Telegram running/not, ChatGPT Atlas running/not.",
-                probe,
-            )
-        api.send_message(chat_id, answer, message_id)
+        with THREADS_LOCK:
+            _data, _active_name, thread = active_state(threads_path, chat_id)
+        probe_thread = dict(thread)
+        probe_thread["session_id"] = ""
+        start_background_job(
+            api,
+            chat_id,
+            threads_path,
+            TOOL_PROBE_THREAD,
+            probe_thread,
+            "Use Computer Use to list running apps. Reply with a terse toolbelt status: Computer Use ok/not ok, Telegram running/not, ChatGPT Atlas running/not.",
+            reply_to_message_id=message_id,
+            persist_thread_state=False,
+        )
         return
 
     if command == "/reset":
-        thread = ensure_thread(data, chat_id, active_name)
-        thread["session_id"] = ""
-        thread["updated_at"] = now_iso()
-        write_threads(threads_path, data)
+        with THREADS_LOCK:
+            data, active_name, thread = active_state(threads_path, chat_id)
+            thread["session_id"] = ""
+            thread["updated_at"] = now_iso()
+            write_threads(threads_path, data)
         api.send_message(chat_id, f"Reset thread: {active_name}", message_id)
         return
 
@@ -1344,7 +1480,8 @@ def handle_message(
         api.send_message(chat_id, "Unknown command. Use /help.", message_id)
         return
 
-    thread = ensure_thread(data, chat_id, active_name)
+    with THREADS_LOCK:
+        _data, active_name, thread = active_state(threads_path, chat_id)
     image_paths: list[Path] = []
     if image_specs:
         try:
@@ -1388,6 +1525,7 @@ def check_config() -> int:
     print(f"timeout_seconds={env_int('CODEX_TELEGRAM_TIMEOUT_SECONDS', DEFAULT_TIMEOUT_SECONDS)}")
     print(f"reply_threading={env_bool('CODEX_TELEGRAM_REPLY_TO_MESSAGES', False)}")
     print(f"reply_unauthorized={env_bool('CODEX_TELEGRAM_REPLY_UNAUTHORIZED', False)}")
+    print(f"allow_group_chats={env_bool('CODEX_TELEGRAM_ALLOW_GROUP_CHATS', False)}")
     print(f"typing_interval_seconds={max(1, env_int('CODEX_TELEGRAM_TYPING_INTERVAL_SECONDS', 4))}")
     print(f"telegram_images={'enabled'}")
     if not token:
@@ -1417,15 +1555,19 @@ def main() -> int:
     offset_path = directory / "offset"
     threads_path = directory / "threads.json"
     api = TelegramAPI(token)
+    signal.signal(signal.SIGTERM, request_shutdown)
+    signal.signal(signal.SIGINT, request_shutdown)
 
     print("Codex Relay running.")
     if not allowed_users and not allowed_chats:
         print("Enrollment mode: messages will only return Telegram ids.")
 
     offset = read_offset(offset_path)
-    while True:
+    while not SHUTDOWN_EVENT.is_set():
         try:
             for update in api.get_updates(offset):
+                if SHUTDOWN_EVENT.is_set():
+                    break
                 update_id = int(update["update_id"])
                 offset = update_id + 1
                 write_private_text(offset_path, str(offset))
@@ -1434,10 +1576,16 @@ def main() -> int:
                     handle_message(api, message, allowed_users, allowed_chats, threads_path)
         except KeyboardInterrupt:
             print("Stopping.")
+            SHUTDOWN_EVENT.set()
+            cancel_all_jobs()
+            join_workers()
             return 0
         except Exception as exc:
             print(f"Relay error: {exc}", file=sys.stderr)
             time.sleep(5)
+    cancel_all_jobs()
+    join_workers()
+    return 0
 
 
 if __name__ == "__main__":

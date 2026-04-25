@@ -5,4 +5,5 @@
 - Prefer standard-library Python unless a dependency removes real complexity.
 - Test with `python3 -m py_compile codex_relay.py scripts/configure.py`.
 - Use `./scripts/doctor.sh` and `./scripts/status.sh` after installer changes.
+- Use `./scripts/record_demo.sh` to regenerate the sanitized launch video.
 - Do not claim this is an official OpenAI project.

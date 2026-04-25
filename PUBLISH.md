@@ -19,6 +19,8 @@ Then in the GitHub repo settings:
 
 Post the video first, not the repo link first.
 
+Use `assets/codex-relay-demo.mp4` as the video.
+
 Use the short post from `LAUNCH_POSTS.md`, then immediately reply with:
 
 ```text

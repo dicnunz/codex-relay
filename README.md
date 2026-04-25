@@ -14,6 +14,12 @@ No hosted middleman. No fake agent shell. Telegram -> Codex CLI -> your Mac.
 
 ## 10-Second Demo
 
+[Watch the launch demo](assets/codex-relay-demo.mp4)
+
+<p align="center">
+  <img src="assets/codex-relay-demo-poster.png" alt="Codex Relay launch demo poster" width="760">
+</p>
+
 Leave your Mac open and awake. From your phone:
 
 ```text

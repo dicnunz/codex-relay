@@ -10,6 +10,19 @@ I left my Mac open on my desk and controlled Codex from bed.
 
 ## Shot List
 
+Generated sanitized asset:
+
+```bash
+./scripts/record_demo.sh
+```
+
+Output:
+
+```text
+assets/codex-relay-demo.mp4
+assets/codex-relay-demo-poster.png
+```
+
 1. Mac open on desk, Codex signed in.
 2. Phone opens Telegram bot.
 3. Send `/status`.

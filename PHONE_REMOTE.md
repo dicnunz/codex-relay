@@ -10,14 +10,14 @@ This is better than VNC when the goal is to command Codex, not manually drive a 
 Phone prompt -> Telegram bot -> Mac LaunchAgent -> Codex CLI -> Telegram reply
 ```
 
-The default normal prompt path uses `gpt-5.5` with `xhigh` reasoning through the local Codex app CLI.
+The default normal prompt path uses your configured Codex model and reasoning effort through the local Codex app CLI.
 
 ## Prompts That Fit
 
 ```text
-go on Atlas and check what assignments are due
+check the app or browser state I already have open and summarize the next action
 open my portfolio repo and tell me the next best fix
-use Computer Use to check if Atlas is running
+use available local tools to inspect whether the target app is running
 make this folder easier to understand
 generate a cover image for this idea and send me the file path
 send a screenshot/photo and ask what changed or what to do next
@@ -30,6 +30,7 @@ Best prompts include a folder, a stopping point, and whether public actions are 
 
 ```text
 /alive
+/health
 /tools
 /try
 /jobs
@@ -47,10 +48,10 @@ make the README feel pinned-worthy
 
 ## Response Timing
 
-- `/ping`, `/alive`, `/status`, `/where`, `/list`, `/new`, and `/cd` should feel quick.
+- `/ping`, `/alive`, `/health`, `/status`, `/where`, `/list`, `/new`, and `/cd` should feel quick.
 - `/jobs`, `/cancel`, and `/history` should work while Codex is busy.
 - Normal prompts wait for Codex to finish.
-- Normal prompts use `gpt-5.5` with `xhigh` reasoning.
+- Normal prompts use your configured Codex model and reasoning effort.
 - Image, browser, Computer Use, repo-editing, and test-running prompts can take tens of seconds or minutes.
 - If the request is public or irreversible, ask Codex to draft and stop before posting, pushing, paying, deleting, or changing accounts.
 
@@ -59,7 +60,8 @@ make the README feel pinned-worthy
 - Service: `~/Library/LaunchAgents/com.codexrelay.agent.plist`
 - Runtime dir: `~/Library/Application Support/CodexRelay`
 - Status: `./scripts/status.sh`
-- Stop: `./scripts/uninstall.sh`
+- Stop LaunchAgent: `./scripts/uninstall.sh`
+- Runtime files remain unless removed separately from `~/Library/Application Support/CodexRelay`
 
 ## Limits
 

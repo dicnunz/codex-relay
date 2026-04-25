@@ -25,9 +25,9 @@ checks = []
 for label, needle in [
     ("LaunchAgent", "state = running"),
     ("Token", "TELEGRAM_BOT_TOKEN=set"),
-    ("Model", "model=gpt-5.5"),
-    ("Reasoning", "reasoning_effort=xhigh"),
-    ("Style", "reply_style=brief"),
+    ("Model", "model="),
+    ("Reasoning", "reasoning_effort="),
+    ("Style", "reply_style="),
     ("Images", "telegram_images=enabled"),
 ]:
     checks.append((label, needle in status))

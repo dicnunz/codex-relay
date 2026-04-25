@@ -22,22 +22,23 @@ else
   fail "Codex CLI not found"
 fi
 
-[[ -f "$ROOT/.env" ]] && ok ".env exists" || warn ".env missing; run ./scripts/install.sh"
+[[ -f "$ROOT/.env" ]] && ok ".env exists" || fail ".env missing; run ./scripts/install.sh"
 
 if [[ -f "$ROOT/.env" ]]; then
   "$ROOT/codex_relay.py" --check-config
 fi
 
-if launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1; then
-  ok "LaunchAgent is loaded"
+launch_state="$(launchctl print "gui/$(id -u)/$LABEL" 2>/dev/null || true)"
+if [[ -n "$launch_state" ]] && printf "%s\n" "$launch_state" | grep -Eq "state = running|pid = [1-9][0-9]*"; then
+  ok "LaunchAgent is running"
 else
-  warn "LaunchAgent is not loaded"
+  fail "LaunchAgent is not running"
 fi
 
-[[ -f "$PLIST" ]] && ok "plist exists" || warn "plist missing"
-[[ -f "$RUNTIME/codex_relay.py" ]] && ok "runtime script exists" || warn "runtime script missing"
+[[ -f "$PLIST" ]] && ok "plist exists" || fail "plist missing"
+[[ -f "$RUNTIME/codex_relay.py" ]] && ok "runtime script exists" || fail "runtime script missing"
 if [[ -f "$RUNTIME/codex_relay.py" ]]; then
-  cmp -s "$ROOT/codex_relay.py" "$RUNTIME/codex_relay.py" && ok "runtime script matches repo" || warn "runtime script differs; run ./scripts/install_launch_agent.sh"
+  cmp -s "$ROOT/codex_relay.py" "$RUNTIME/codex_relay.py" && ok "runtime script matches repo" || fail "runtime script differs; run ./scripts/install_launch_agent.sh"
 fi
 
 python3 -m py_compile "$ROOT/codex_relay.py" "$ROOT/scripts/configure.py"

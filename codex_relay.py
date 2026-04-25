@@ -218,7 +218,7 @@ class TelegramAPI:
     def get_file(self, file_id: str) -> dict[str, Any]:
         return self.call("getFile", {"file_id": file_id}).get("result", {})
 
-    def download_file(self, file_path: str) -> bytes:
+    def download_file(self, file_path: str, max_bytes: Optional[int] = None) -> bytes:
         quoted_path = urllib.parse.quote(file_path, safe="/")
         request = urllib.request.Request(
             f"https://api.telegram.org/file/bot{self.token}/{quoted_path}",
@@ -226,7 +226,26 @@ class TelegramAPI:
         )
         try:
             with urllib.request.urlopen(request, timeout=70) as response:
-                return response.read()
+                announced = response.headers.get("Content-Length")
+                if max_bytes is not None and announced:
+                    try:
+                        if int(announced) > max_bytes:
+                            raise RuntimeError(
+                                f"Telegram file is too large ({announced} bytes; limit {max_bytes})"
+                            )
+                    except ValueError:
+                        pass
+                chunks = bytearray()
+                while True:
+                    chunk = response.read(64 * 1024)
+                    if not chunk:
+                        break
+                    chunks.extend(chunk)
+                    if max_bytes is not None and len(chunks) > max_bytes:
+                        raise RuntimeError(
+                            f"Telegram file is too large ({len(chunks)} bytes; limit {max_bytes})"
+                        )
+                return bytes(chunks)
         except urllib.error.HTTPError as exc:
             body = exc.read().decode(errors="replace")[:600]
             raise RuntimeError(f"Telegram file download HTTP {exc.code}: {body}") from exc
@@ -308,6 +327,7 @@ class RelayJob:
 
 JOBS_LOCK = threading.Lock()
 ACTIVE_JOBS: dict[str, RelayJob] = {}
+SHUTDOWN_CANCEL_STARTED = threading.Event()
 
 
 def register_job(job: RelayJob) -> None:
@@ -344,6 +364,14 @@ def cancel_all_jobs() -> None:
         job.cancel()
 
 
+def cancel_all_jobs_async() -> None:
+    if SHUTDOWN_CANCEL_STARTED.is_set():
+        return
+    SHUTDOWN_CANCEL_STARTED.set()
+    worker = threading.Thread(target=cancel_all_jobs, name="codex-relay-shutdown-cancel", daemon=True)
+    worker.start()
+
+
 def register_worker(worker: threading.Thread) -> None:
     with WORKERS_LOCK:
         WORKERS.append(worker)
@@ -370,8 +398,7 @@ def join_workers(timeout: float = 10.0) -> None:
 
 def request_shutdown(_signum: int, _frame: object) -> None:
     SHUTDOWN_EVENT.set()
-    cancel_all_jobs()
-    raise KeyboardInterrupt
+    cancel_all_jobs_async()
 
 
 def state_dir() -> Path:
@@ -489,9 +516,7 @@ def download_telegram_images(api: TelegramAPI, message: dict[str, Any]) -> list[
                 f"image is too large ({reported_size} bytes; limit {max_bytes})"
             )
 
-        content = api.download_file(file_path)
-        if len(content) > max_bytes:
-            raise RuntimeError(f"image is too large ({len(content)} bytes; limit {max_bytes})")
+        content = api.download_file(file_path, max_bytes=max_bytes)
 
         suffix = image_suffix(
             str(spec.get("file_name") or ""),
@@ -642,6 +667,10 @@ def authorized(
 ) -> bool:
     if chat_type != "private" and not env_bool("CODEX_TELEGRAM_ALLOW_GROUP_CHATS", False):
         return False
+    if chat_type != "private":
+        if not allowed_users or not allowed_chats:
+            return False
+        return user_id in allowed_users and chat_id in allowed_chats
     if allowed_users and allowed_chats:
         return user_id in allowed_users and chat_id in allowed_chats
     if allowed_users:
@@ -950,6 +979,7 @@ def command_help() -> str:
         [
             "Commands:",
             "/ping - check the bridge",
+            "/health - fast local bridge checks",
             "/jobs - show running and last run",
             "/history - show recent run receipts",
             "/cancel [job] - stop a running job",
@@ -973,6 +1003,62 @@ def command_help() -> str:
             "Normal messages and images go to the active thread.",
         ]
     )
+
+
+def launchagent_running() -> Optional[bool]:
+    if sys.platform != "darwin":
+        return None
+    label = os.environ.get("CODEX_RELAY_LABEL", "com.codexrelay.agent")
+    try:
+        result = subprocess.run(
+            ["launchctl", "print", f"gui/{os.getuid()}/{label}"],
+            stdout=subprocess.PIPE,
+            text=True,
+            stderr=subprocess.DEVNULL,
+            timeout=2,
+            check=False,
+        )
+    except Exception:
+        return None
+    if result.returncode != 0:
+        return False
+    return "state = running" in result.stdout or "pid = " in result.stdout
+
+
+def health_text() -> str:
+    token = bool(os.environ.get("TELEGRAM_BOT_TOKEN", "").strip())
+    allowed_users = parse_id_set("TELEGRAM_ALLOWED_USER_ID", "TELEGRAM_ALLOWED_USER_IDS")
+    allowed_chats = parse_id_set("TELEGRAM_ALLOWED_CHAT_ID", "TELEGRAM_ALLOWED_CHAT_IDS")
+    workdir = Path(os.environ.get("CODEX_TELEGRAM_WORKDIR", default_workdir())).expanduser()
+    codex_bin = os.environ.get("CODEX_BIN", "codex")
+    launchagent = launchagent_running()
+    checks = [
+        ("telegram token", token, "set", "missing"),
+        ("allowlist", bool(allowed_users or allowed_chats), "configured", "missing"),
+        ("codex cli", shutil.which(codex_bin) is not None, "found", "missing"),
+        ("workdir", workdir.exists() and workdir.is_dir(), str(workdir), f"missing: {workdir}"),
+        (
+            "launchagent",
+            launchagent is not False,
+            "running" if launchagent else "unknown",
+            "not running",
+        ),
+        ("reply style", True, reply_style_default(), ""),
+        (
+            "model",
+            True,
+            f"{os.environ.get('CODEX_TELEGRAM_MODEL', 'gpt-5.5')} / "
+            f"{env_choice('CODEX_TELEGRAM_REASONING_EFFORT', DEFAULT_REASONING_EFFORT, REASONING_EFFORTS)}",
+            "",
+        ),
+    ]
+    lines = ["health:"]
+    for label, ok, good, bad in checks:
+        status = "ok" if ok else "warn"
+        value = good if ok else bad
+        lines.append(f"- {label}: {status} ({value})")
+    lines.append("deep check: /tools")
+    return "\n".join(lines)
 
 
 def status_text(thread: dict[str, Any], chat_id: Optional[int] = None) -> str:
@@ -1054,6 +1140,16 @@ def jobs_text(chat_id: int, thread: dict[str, Any]) -> str:
     else:
         lines.append("- none")
     lines.extend(last_run_lines(thread))
+    return "\n".join(lines)
+
+
+def busy_thread_message(chat_id: int, thread_name: str) -> str:
+    running = jobs_for_thread(chat_id, thread_name)
+    if not running:
+        return ""
+    lines = [f"Thread `{thread_name}` is busy."]
+    lines.extend(f"- {job_line(job)}" for job in running)
+    lines.append("Wait for it, or cancel with /cancel job-id.")
     return "\n".join(lines)
 
 
@@ -1284,7 +1380,7 @@ def capabilities_text() -> str:
             "- read Telegram photo and image-document attachments",
             "- use Computer Use, Browser Use, apps/connectors, images, and subagents when your Codex runtime exposes them",
             "- inspect Codex automations with /automations",
-            "- operate Atlas/browser sessions when macOS permissions and logins allow it",
+            "- operate local app/browser sessions when macOS permissions and logins allow it",
             "- draft public messages, commits, and posts, then stop at the confirmation boundary",
             "",
             "It cannot bypass logins, MFA, macOS privacy prompts, Codex limits, or mandatory safety confirmations.",
@@ -1298,7 +1394,7 @@ def try_text() -> str:
             "Good first prompts:",
             "1. /tools",
             "2. /new school",
-            "   go on Atlas and check what assignments are due",
+            "   check the app or browser state I already have open and summarize the next action",
             "3. /new repo",
             "   /cd Projects/my-repo",
             "   read this repo and make the README more impressive without pushing",
@@ -1372,6 +1468,9 @@ def handle_message(
     if command == "/ping":
         api.send_message(chat_id, "online", message_id)
         return
+    if command == "/health":
+        api.send_message(chat_id, health_text(), message_id)
+        return
     if command == "/id":
         api.send_message(chat_id, f"Telegram user ID: {user_id}\nTelegram chat ID: {chat_id}", message_id)
         return
@@ -1441,6 +1540,10 @@ def handle_message(
         with THREADS_LOCK:
             data, active_name, thread = active_state(threads_path, chat_id)
             current_workdir = str(thread.get("workdir") or default_workdir())
+        busy = busy_thread_message(chat_id, active_name)
+        if busy:
+            api.send_message(chat_id, busy, message_id)
+            return
         try:
             path = resolve_workdir(arg, current_workdir)
         except ValueError as exc:
@@ -1456,6 +1559,12 @@ def handle_message(
 
     if command == "/home":
         path = Path.home()
+        with THREADS_LOCK:
+            data, active_name, thread = active_state(threads_path, chat_id)
+        busy = busy_thread_message(chat_id, active_name)
+        if busy:
+            api.send_message(chat_id, busy, message_id)
+            return
         with THREADS_LOCK:
             data, active_name, thread = active_state(threads_path, chat_id)
             thread["workdir"] = str(path)
@@ -1555,13 +1664,19 @@ def handle_message(
             threads_path,
             TOOL_PROBE_THREAD,
             probe_thread,
-            "Use Computer Use to list running apps. Reply with a terse toolbelt status: Computer Use ok/not ok, Telegram running/not, ChatGPT Atlas running/not.",
+            "Check the local Codex toolbelt without reading secrets or private logs. Reply with terse status for available desktop/app/browser/image/subagent tools and exact blockers.",
             reply_to_message_id=message_id,
             persist_thread_state=False,
         )
         return
 
     if command == "/reset":
+        with THREADS_LOCK:
+            data, active_name, thread = active_state(threads_path, chat_id)
+        busy = busy_thread_message(chat_id, active_name)
+        if busy:
+            api.send_message(chat_id, busy, message_id)
+            return
         with THREADS_LOCK:
             data, active_name, thread = active_state(threads_path, chat_id)
             thread["session_id"] = ""

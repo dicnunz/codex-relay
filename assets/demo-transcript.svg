@@ -10,7 +10,7 @@
 
     <rect x="322" y="252" width="430" height="126" rx="20" fill="#171717" stroke="#333333"/>
     <text x="348" y="286" fill="#f5f5f5">Mac is live.</text>
-    <text x="348" y="318" fill="#a7f3d0">gpt-5.5 / xhigh</text>
+    <text x="348" y="318" fill="#a7f3d0">configured model</text>
     <text x="348" y="350" fill="#a7f3d0">Telegram -&gt; Codex CLI</text>
 
     <rect x="112" y="420" width="286" height="48" rx="18" fill="#2563eb"/>

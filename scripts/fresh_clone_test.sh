@@ -13,6 +13,7 @@ if [[ "$SOURCE" == "$ROOT" && -n "$(git -C "$ROOT" status --short)" ]]; then
   printf "mode: current working tree copy\n"
   mkdir -p "$TMP/codex-relay"
   git -C "$ROOT" ls-files -co --exclude-standard -z | while IFS= read -r -d '' file_path; do
+    [[ -e "$ROOT/$file_path" ]] || continue
     mkdir -p "$TMP/codex-relay/$(dirname "$file_path")"
     cp -p "$ROOT/$file_path" "$TMP/codex-relay/$file_path"
   done

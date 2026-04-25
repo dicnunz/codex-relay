@@ -9,6 +9,9 @@ import sys
 import threading
 import json
 import time
+import importlib.util
+import contextlib
+import io
 from pathlib import Path
 from typing import Optional
 
@@ -16,6 +19,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import codex_relay as relay
+
+CONFIGURE_SPEC = importlib.util.spec_from_file_location("configure", ROOT / "scripts" / "configure.py")
+assert CONFIGURE_SPEC and CONFIGURE_SPEC.loader
+configure = importlib.util.module_from_spec(CONFIGURE_SPEC)
+CONFIGURE_SPEC.loader.exec_module(configure)
 
 
 def assert_true(value: object, message: str) -> None:
@@ -32,7 +40,55 @@ class FakeTelegram(relay.TelegramAPI):
         return {"ok": True, "result": {}}
 
 
-def main() -> int:
+class FakeResponse:
+    def __init__(self, chunks: list[bytes], headers: Optional[dict[str, str]] = None) -> None:
+        self.chunks = chunks
+        self.headers = headers or {}
+
+    def __enter__(self) -> "FakeResponse":
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        pass
+
+    def read(self, _size: int = -1) -> bytes:
+        if not self.chunks:
+            return b""
+        return self.chunks.pop(0)
+
+
+ENV_PREFIXES = ("CODEX_TELEGRAM_", "CODEX_RELAY_", "TELEGRAM_")
+ENV_EXACT = {"CODEX_BIN"}
+TEST_ENV = {
+    "CODEX_TELEGRAM_MODEL": "gpt-5.5",
+    "CODEX_TELEGRAM_REASONING_EFFORT": "xhigh",
+    "CODEX_TELEGRAM_REPLY_STYLE": "brief",
+    "CODEX_TELEGRAM_TIMEOUT_SECONDS": "600",
+}
+
+
+@contextlib.contextmanager
+def isolated_env() -> object:
+    touched = {
+        key
+        for key in os.environ
+        if key.startswith(ENV_PREFIXES) or key in ENV_EXACT
+    } | set(TEST_ENV)
+    old_values = {key: os.environ.get(key) for key in touched}
+    for key in touched:
+        os.environ.pop(key, None)
+    os.environ.update(TEST_ENV)
+    try:
+        yield
+    finally:
+        for key in touched:
+            os.environ.pop(key, None)
+        for key, value in old_values.items():
+            if value is not None:
+                os.environ[key] = value
+
+
+def run_tests() -> int:
     photo_message = {
         "message_id": 1,
         "caption": "can you see this?",
@@ -70,7 +126,78 @@ def main() -> int:
     assert_true(not relay.authorized(1, -100, "group", {1}, {-100}), "expected groups disabled by default")
     os.environ["CODEX_TELEGRAM_ALLOW_GROUP_CHATS"] = "true"
     assert_true(relay.authorized(1, -100, "group", {1}, {-100}), "expected explicit group opt-in")
+    assert_true(not relay.authorized(1, -100, "group", {1}, set()), "expected groups to require chat allowlist")
+    assert_true(not relay.authorized(1, -100, "group", set(), {-100}), "expected groups to require user allowlist")
     os.environ.pop("CODEX_TELEGRAM_ALLOW_GROUP_CHATS", None)
+
+    assert_true(
+        configure.enrollment_match(
+            {
+                "message": {
+                    "text": "/start codex-abc123",
+                    "from": {"id": 1},
+                    "chat": {"id": 2, "type": "private"},
+                }
+            },
+            "codex-abc123",
+        )
+        == ("1", "2"),
+        "expected nonce enrollment match",
+    )
+    assert_true(
+        configure.enrollment_match(
+            {
+                "message": {
+                    "text": "/start",
+                    "from": {"id": 1},
+                    "chat": {"id": 2, "type": "private"},
+                }
+            },
+            "codex-abc123",
+        )
+        is None,
+        "expected stale /start to be ignored",
+    )
+    original_latest_offset = configure.latest_update_offset
+    original_token_hex = configure.secrets.token_hex
+    original_telegram_call = configure.telegram_call
+    try:
+        configure.latest_update_offset = lambda _token: 42
+        configure.secrets.token_hex = lambda _n: "abc123"
+
+        def fake_telegram_call(_token: str, _method: str, params: Optional[dict[str, str]] = None) -> dict[str, object]:
+            assert_true(params and params.get("offset") == "42", "expected stale updates to be skipped")
+            return {
+                "result": [
+                    {
+                        "update_id": 42,
+                        "message": {
+                            "text": "/start",
+                            "from": {"id": 9},
+                            "chat": {"id": 9, "type": "private"},
+                        },
+                    },
+                    {
+                        "update_id": 43,
+                        "message": {
+                            "text": "/start codex-abc123",
+                            "from": {"id": 10},
+                            "chat": {"id": 10, "type": "private"},
+                        },
+                    },
+                ]
+            }
+
+        configure.telegram_call = fake_telegram_call
+        with contextlib.redirect_stdout(io.StringIO()):
+            assert_true(
+                configure.wait_for_start("token", "botname", "") == ("10", "10"),
+                "expected wait_for_start to require nonce-bearing /start",
+            )
+    finally:
+        configure.latest_update_offset = original_latest_offset
+        configure.secrets.token_hex = original_token_hex
+        configure.telegram_call = original_telegram_call
 
     fake_enroll = FakeTelegram()
     relay.handle_message(
@@ -111,10 +238,36 @@ def main() -> int:
     assert_true("reasoning effort: xhigh" in status, "expected default xhigh reasoning status")
     assert_true("running jobs: 0" in status, "expected running job count")
     assert_true("last run: ok; 1.2s; 1 image" in status, "expected last-run latency status")
+    health = relay.health_text()
+    assert_true("health:" in health, "expected health output")
+    assert_true("deep check: /tools" in health, "expected health to point at deep check")
+
+    old_urlopen = relay.urllib.request.urlopen
+    try:
+        relay.urllib.request.urlopen = lambda *_args, **_kwargs: FakeResponse([b"ok"])
+        assert_true(relay.TelegramAPI("token").download_file("file.jpg", max_bytes=2) == b"ok", "expected bounded download")
+        relay.urllib.request.urlopen = lambda *_args, **_kwargs: FakeResponse([b"abc"])
+        try:
+            relay.TelegramAPI("token").download_file("file.jpg", max_bytes=2)
+        except RuntimeError as exc:
+            assert_true("too large" in str(exc), "expected oversized streaming download failure")
+        else:
+            raise SystemExit("expected oversized streaming download failure")
+        relay.urllib.request.urlopen = lambda *_args, **_kwargs: FakeResponse([b""], {"Content-Length": "3"})
+        try:
+            relay.TelegramAPI("token").download_file("file.jpg", max_bytes=2)
+        except RuntimeError as exc:
+            assert_true("too large" in str(exc), "expected oversized content-length failure")
+        else:
+            raise SystemExit("expected oversized content-length failure")
+    finally:
+        relay.urllib.request.urlopen = old_urlopen
 
     job = relay.RelayJob(123, "main", 2)
     relay.register_job(job)
     try:
+        busy = relay.busy_thread_message(123, "main")
+        assert_true("Thread `main` is busy." in busy, "expected busy thread message")
         jobs = relay.jobs_text(123, thread)
         assert_true(job.id in jobs, "expected running job in /jobs output")
         assert_true("2 images" in jobs, "expected image count in /jobs output")
@@ -191,6 +344,46 @@ def main() -> int:
             data["threads_by_chat"]["123"]["main"]["reply_style"] == "brief",
             "expected /brief to persist style",
         )
+        relay.handle_message(
+            fake_style,
+            {
+                "message_id": 5,
+                "chat": {"id": 123, "type": "private"},
+                "from": {"id": 1},
+                "text": "/health",
+            },
+            {1},
+            {123},
+            threads_path,
+        )
+        assert_true("health:" in str(fake_style.calls[-1][1].get("text")), "expected /health command")
+
+        background_calls = []
+        original_start_background_job = relay.start_background_job
+
+        def fake_start_background_job(*args: object, **kwargs: object) -> None:
+            background_calls.append((args, kwargs))
+
+        relay.start_background_job = fake_start_background_job
+        try:
+            relay.handle_message(
+                fake_style,
+                {
+                    "message_id": 6,
+                    "chat": {"id": 123, "type": "private"},
+                    "from": {"id": 1},
+                    "text": "/tools",
+                },
+                {1},
+                {123},
+                threads_path,
+            )
+        finally:
+            relay.start_background_job = original_start_background_job
+        assert_true(background_calls, "expected /tools to start a background job")
+        args, kwargs = background_calls[-1]
+        assert_true(args[3] == relay.TOOL_PROBE_THREAD, "expected isolated tool probe thread")
+        assert_true(kwargs.get("persist_thread_state") is False, "expected /tools not to persist session")
 
         fake_codex = Path(tmp) / "fake-codex"
         fake_codex.write_text(
@@ -325,6 +518,11 @@ def main() -> int:
 
     print("ok: smoke tests")
     return 0
+
+
+def main() -> int:
+    with isolated_env():
+        return run_tests()
 
 
 if __name__ == "__main__":

@@ -35,5 +35,5 @@ printf "\nRunning doctor...\n"
 "$ROOT/scripts/doctor.sh"
 
 printf "\nDone. DM your bot:\n"
-printf "/alive\n/tools\n/latency\n"
+printf "/alive\n/health\n/tools\n/latency\n"
 printf "\nLocal status page:\n./scripts/status_ui.sh\n"

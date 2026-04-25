@@ -9,14 +9,14 @@ The product is ready to show only when these are true:
 - The LaunchAgent is running.
 - The installed runtime script matches the repo.
 - `./scripts/doctor.sh` passes.
-- The configured Codex app CLI can run `gpt-5.5`.
+- The configured Codex app CLI can run the selected model.
 - Telegram images are saved privately and attached to Codex.
 - The demo video is readable in the first three seconds and shows Telegram -> LaunchAgent -> Codex CLI -> Mac.
 - The README explains latency as real Codex runtime, not instant chat latency.
 - `./scripts/fresh_clone_test.sh` passes from a clean checkout.
 - macOS CI runs syntax, smoke, and local demo checks.
 - `./scripts/status_ui.sh` opens a private local status page.
-- Local latency probe on 2026-04-25: trivial `gpt-5.5` xhigh Codex CLI request returned in about 4.8-6.3 seconds before Telegram delivery.
+- Local latency probe on 2026-04-25: trivial configured Codex CLI request returned in about 4.8-6.3 seconds before Telegram delivery.
 - The README explains power and risk without hype.
 - Public copy says unofficial and local-first.
 - Public copy explains the wedge against VNC and PWA/app-server setups without dunking on them.
@@ -26,7 +26,7 @@ The product is ready to show only when these are true:
 - LaunchAgent loaded: `com.codexrelay.agent`.
 - Runtime script matches the repo copy.
 - `./scripts/doctor.sh` passes.
-- Local `gpt-5.5` image check works through `/Applications/Codex.app/Contents/Resources/codex`.
+- Local image check works through `/Applications/Codex.app/Contents/Resources/codex`.
 - Real Telegram image round trip works: Telegram photo + caption -> private attachment save -> Codex `--image` -> Telegram reply.
 - Generated demo is 1280x720 H.264.
 - Fresh clone test passes without Telegram secrets.
@@ -36,7 +36,7 @@ The product is ready to show only when these are true:
 
 - Local LaunchAgent, not a hosted relay account.
 - Local Codex app CLI, not a separate agent backend.
-- Default model is `gpt-5.5` with `xhigh` reasoning.
+- Default model and reasoning effort are explicit in `.env.example`.
 - Telegram bot is allow-listed to one configured user/chat.
 - Runtime state lives under `~/Library/Application Support/CodexRelay`.
 - Runtime jobs expose `/jobs`, `/cancel`, and `/history` without logging prompts or responses.
@@ -47,10 +47,10 @@ The product is ready to show only when these are true:
 
 Expected behavior:
 
-- `/ping`, `/alive`, `/status`, `/where`, and thread commands should return quickly because they do not call Codex.
+- `/ping`, `/alive`, `/health`, `/status`, `/where`, and thread commands should return quickly because they do not call Codex.
 - `/jobs`, `/cancel`, and `/history` should respond while a long Codex task is running.
 - Normal prompts show Telegram typing while Codex is running.
-- Normal prompts use `gpt-5.5` with xhigh reasoning.
+- Normal prompts use the configured model and reasoning effort.
 - Final replies arrive only after the Codex CLI run finishes.
 - Longer waits are normal for image analysis, browser/Computer Use work, repo edits, tests, package installs, or prompts that require tool calls.
 - A task that exceeds `CODEX_TELEGRAM_TIMEOUT_SECONDS` stops with a timeout message.

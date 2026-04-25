@@ -9,9 +9,21 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Shell syntax
+        run: for f in scripts/*.sh; do zsh -n "$f"; done
       - name: Python syntax
-        run: python3 -m py_compile codex_relay.py scripts/configure.py scripts/smoke_test.py
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile $(git ls-files '*.py')
       - name: Smoke tests
-        run: PYTHONPATH="$PWD" python3 scripts/smoke_test.py
+        run: PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$PWD" python3 scripts/smoke_test.py
+      - name: System Python smoke tests
+        run: PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$PWD" /usr/bin/python3 scripts/smoke_test.py
       - name: Local demo
-        run: ./scripts/demo.sh
+        run: PYTHONDONTWRITEBYTECODE=1 ./scripts/demo.sh
+      - name: Generated demo assets
+        run: |
+          brew install ffmpeg
+          ./scripts/record_demo.sh
+          git diff --exit-code -- assets/social-card.svg assets/social-card.png assets/demo-transcript.svg assets/codex-relay-demo.mp4 assets/codex-relay-demo-poster.png
+          test "$(ffprobe -v error -show_entries stream=width,height -of csv=p=0:s=x assets/codex-relay-demo.mp4 | head -n1)" = "1280x720"
+      - name: Fresh clone path
+        run: PYTHONDONTWRITEBYTECODE=1 ./scripts/fresh_clone_test.sh

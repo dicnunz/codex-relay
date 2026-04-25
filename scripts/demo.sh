@@ -14,6 +14,9 @@ printf "Telegram > /alive\n"
 printf "Codex Relay is live.\n"
 printf "remote: Telegram -> LaunchAgent -> Codex CLI -> this Mac\n\n"
 
+printf "Sample Telegram > /health after install\n"
+printf "health: token set; allowlist configured; Codex CLI found\n\n"
+
 printf "Telegram > /tools\n"
 printf "Working: job 8f31c2a0\n"
 printf "Codex checks the local toolbelt and reports exact blockers.\n\n"

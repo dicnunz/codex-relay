@@ -7,6 +7,9 @@ This is the exact public launch path. Do not run the publish commands unless the
 Only run this when you are ready to publish the repo publicly:
 
 ```bash
+git status --short
+git add -A
+git commit -m "Prepare public Codex Relay launch"
 gh repo create dicnunz/codex-relay --public --source=. --remote=origin --push
 ```
 
@@ -14,7 +17,7 @@ Then in the GitHub repo settings:
 
 - Set description: `Private Telegram remote for Codex on your Mac.`
 - Add topics: `codex`, `telegram-bot`, `macos`, `computer-use`, `agents`, `openai`, `launchagent`
-- Add social preview: `assets/social-card.svg`
+- Add social preview: `assets/social-card.png`
 - Pin the repo.
 
 Before publishing:
@@ -31,12 +34,12 @@ python3 -m py_compile codex_relay.py scripts/configure.py
 
 Use `assets/codex-relay-demo.mp4` as the video.
 
-Use the primary post from `LAUNCH_POSTS.md`, then immediately reply with:
+Use the main post from `LAUNCH.md`, then immediately reply with:
 
 ```text
 Install:
 
-gh repo clone dicnunz/codex-relay
+git clone https://github.com/dicnunz/codex-relay.git
 cd codex-relay
 ./scripts/install.sh
 
@@ -49,7 +52,7 @@ Then DM your bot:
 send a screenshot and ask what changed
 ```
 
-Use the latency reply from `LAUNCH_POSTS.md` if anyone asks why it is not instant.
+Use the latency reply from `LAUNCH.md` if anyone asks why it is not instant.
 
 Do not describe it as an always-on autonomous agent. The clean claim is:
 
@@ -73,7 +76,7 @@ Those can work. Codex Relay is the smaller shape when you want task-level Codex 
 
 - Video: `assets/codex-relay-demo.mp4`
 - Poster: `assets/codex-relay-demo-poster.png`
-- Social preview: `assets/social-card.svg`
+- Social preview: `assets/social-card.png`
 - README transcript: `assets/demo-transcript.svg`
 - Local status page: `./scripts/status_ui.sh`
 
@@ -81,7 +84,7 @@ Before posting, make sure the first frame still shows the complete flow: Telegra
 
 Best demo shape:
 
-1. Phone sends `/tools`.
+1. Phone sends `/health`, then `/tools`.
 2. Telegram shows a real job receipt.
 3. Mac visibly runs local Codex.
 4. Telegram receives the final answer.

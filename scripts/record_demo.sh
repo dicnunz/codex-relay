@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
 OUT="$ROOT/assets/codex-relay-demo.mp4"
 POSTER="$ROOT/assets/codex-relay-demo-poster.png"
 SOCIAL="$ROOT/assets/social-card.svg"
+SOCIAL_PNG="$ROOT/assets/social-card.png"
 TRANSCRIPT="$ROOT/assets/demo-transcript.svg"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -26,7 +27,7 @@ write_social() {
   <rect x="54" y="54" width="1172" height="612" rx="18" fill="#101010" stroke="#2b2b2b"/>
   <text x="104" y="132" fill="#f5f5f5" font-family="Arial, sans-serif" font-size="74" font-weight="700">Text Codex from Telegram.</text>
   <text x="108" y="188" fill="#b8b8b8" font-family="Arial, sans-serif" font-size="28">Your Mac runs the local Codex CLI.</text>
-  <text x="108" y="236" fill="#f5f5f5" font-family="Arial, sans-serif" font-size="28">No VNC. No hosted relay. No web app server.</text>
+  <text x="108" y="236" fill="#f5f5f5" font-family="Arial, sans-serif" font-size="28">No VNC. No extra hosted relay server.</text>
 
   <g transform="translate(108 306)">
     <rect width="320" height="246" rx="28" fill="#050505" stroke="#303030"/>
@@ -34,10 +35,10 @@ write_social() {
     <circle cx="48" cy="47" r="10" fill="#5eead4"/>
     <text x="70" y="54" fill="#f5f5f5" font-family="Arial, sans-serif" font-size="17" font-weight="700">Telegram DM</text>
     <rect x="34" y="92" width="162" height="38" rx="16" fill="#2563eb"/>
-    <text x="54" y="117" fill="#ffffff" font-family="Menlo, monospace" font-size="15">/tools</text>
+    <text x="54" y="117" fill="#ffffff" font-family="Menlo, monospace" font-size="15">/health</text>
     <rect x="82" y="148" width="204" height="58" rx="18" fill="#171717" stroke="#333333"/>
-    <text x="102" y="174" fill="#d4d4d4" font-family="Menlo, monospace" font-size="14">job 8f31c2a0</text>
-    <text x="102" y="194" fill="#22c55e" font-family="Menlo, monospace" font-size="14">reply ready</text>
+    <text x="102" y="174" fill="#d4d4d4" font-family="Menlo, monospace" font-size="14">health ok</text>
+    <text x="102" y="194" fill="#22c55e" font-family="Menlo, monospace" font-size="14">Mac ready</text>
   </g>
 
   <text x="476" y="438" fill="#d4d4d4" font-family="Arial, sans-serif" font-size="46" font-weight="700">-&gt;</text>
@@ -75,7 +76,7 @@ write_transcript() {
 
     <rect x="322" y="252" width="430" height="126" rx="20" fill="#171717" stroke="#333333"/>
     <text x="348" y="286" fill="#f5f5f5">Mac is live.</text>
-    <text x="348" y="318" fill="#a7f3d0">gpt-5.5 / xhigh</text>
+    <text x="348" y="318" fill="#a7f3d0">configured model</text>
     <text x="348" y="350" fill="#a7f3d0">Telegram -&gt; Codex CLI</text>
 
     <rect x="112" y="420" width="286" height="48" rx="18" fill="#2563eb"/>
@@ -146,26 +147,27 @@ render_svg() {
 
 write_social
 write_transcript
+render_svg "$SOCIAL" "$SOCIAL_PNG"
 
 write_frame "$TMP/frame1.svg" \
   "CODEX RELAY" \
   "Telegram is the remote." \
   "The Mac still runs local Codex. No tiny desktop." \
-  "/alive" \
+  "/health" \
   "Mac is live" \
   "LaunchAgent running" \
-  "gpt-5.5 / xhigh" \
+  "configured model" \
   "no hosted relay"
 
 write_frame "$TMP/frame2.svg" \
   "REAL WORK" \
-  "Long runs have receipts." \
+  "Track long runs." \
   "Start work, check status, cancel if needed." \
   "/jobs" \
   "job 8f31c2a0" \
   "Codex runs in background" \
   "cancelable process tree" \
-  "safe history receipt"
+  "history without prompt logs"
 
 write_frame "$TMP/frame3.svg" \
   "SCREENSHOTS" \
@@ -180,8 +182,8 @@ write_frame "$TMP/frame3.svg" \
 write_frame "$TMP/frame4.svg" \
   "INSTALL" \
   "One small local bridge." \
-  "BotFather token, allowlist, LaunchAgent. No web app server." \
-  "gh repo clone" \
+  "Redacted bot token, allowlist, LaunchAgent. No web app server." \
+  "git clone" \
   "./scripts/install.sh" \
   "doctor passed" \
   "status UI available" \
@@ -202,6 +204,7 @@ ffmpeg -y -v error \
   -map "[v]" -c:v libx264 -preset veryfast -crf 18 -movflags +faststart "$OUT"
 
 echo "wrote $SOCIAL"
+echo "wrote $SOCIAL_PNG"
 echo "wrote $TRANSCRIPT"
 echo "wrote $OUT"
 echo "wrote $POSTER"

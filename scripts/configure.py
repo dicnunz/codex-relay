@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import json
+import getpass
 import os
+import secrets
 import shutil
 import subprocess
 import sys
@@ -101,19 +103,56 @@ def prompt_token(existing: str) -> str:
     if existing:
         return existing
     print("Create a Telegram bot with @BotFather, then paste its token here.")
-    token = input("Bot token: ").strip()
+    token = getpass.getpass("Bot token: ").strip()
     if not token:
         raise SystemExit("No token provided.")
     return token
 
 
-def wait_for_start(token: str, username: str, existing_user: str) -> tuple[str, str]:
+def latest_update_offset(token: str) -> Optional[int]:
+    updates = telegram_call(
+        token,
+        "getUpdates",
+        {"timeout": "0", "allowed_updates": json.dumps(["message"])},
+    ).get("result", [])
+    update_ids = [int(update["update_id"]) for update in updates if "update_id" in update]
+    if not update_ids:
+        return None
+    return max(update_ids) + 1
+
+
+def enrollment_match(update: dict, nonce: str) -> Optional[tuple[str, str]]:
+    message = update.get("message") or {}
+    text = str(message.get("text") or "").strip()
+    sender = message.get("from") or {}
+    chat = message.get("chat") or {}
+    if chat.get("type") != "private" or not sender.get("id"):
+        return None
+    if text != f"/start {nonce}":
+        return None
+    return str(sender["id"]), str(chat.get("id") or sender["id"])
+
+
+def wait_for_start(
+    token: str,
+    username: str,
+    existing_user: str,
+    existing_chat: str = "",
+) -> tuple[str, str]:
     if existing_user:
-        return existing_user, existing_user
-    print(f"Open https://t.me/{username} and send /start.")
+        return existing_user, existing_chat or existing_user
+    nonce = "codex-" + secrets.token_hex(3)
+    deep_link = f"https://t.me/{username}?start={nonce}" if username else ""
+    try:
+        offset = latest_update_offset(token)
+    except urllib.error.HTTPError as exc:
+        raise SystemExit(f"Telegram rejected the token: HTTP {exc.code}") from exc
+    print("Authorize only your private Telegram DM.")
+    if deep_link:
+        print(f"Open {deep_link}")
+    print(f"Send exactly: /start {nonce}")
     print("Waiting up to 90 seconds...")
     deadline = time.time() + 90
-    offset = None
     while time.time() < deadline:
         params = {"timeout": "5", "allowed_updates": json.dumps(["message"])}
         if offset is not None:
@@ -124,13 +163,11 @@ def wait_for_start(token: str, username: str, existing_user: str) -> tuple[str, 
             raise SystemExit(f"Telegram rejected the token: HTTP {exc.code}") from exc
         for update in updates:
             offset = int(update["update_id"]) + 1
-            message = update.get("message") or {}
-            sender = message.get("from") or {}
-            chat = message.get("chat") or {}
-            if chat.get("type") == "private" and sender.get("id"):
-                return str(sender["id"]), str(chat.get("id") or sender["id"])
+            match = enrollment_match(update, nonce)
+            if match:
+                return match
         time.sleep(1)
-    raise SystemExit("Timed out waiting for /start. Run scripts/configure.py again.")
+    raise SystemExit("Timed out waiting for the exact /start code. Run scripts/configure.py again.")
 
 
 def main() -> int:
@@ -142,7 +179,12 @@ def main() -> int:
     except urllib.error.HTTPError as exc:
         raise SystemExit(f"Telegram rejected the token: HTTP {exc.code}") from exc
     username = bot.get("username") or ""
-    user_id, chat_id = wait_for_start(token, username, values.get("TELEGRAM_ALLOWED_USER_ID", ""))
+    user_id, chat_id = wait_for_start(
+        token,
+        username,
+        values.get("TELEGRAM_ALLOWED_USER_ID", ""),
+        values.get("TELEGRAM_ALLOWED_CHAT_ID", ""),
+    )
     values.update(
         {
             "TELEGRAM_BOT_TOKEN": token,
@@ -169,7 +211,7 @@ def main() -> int:
     save_env(values)
     subprocess.run([str(ROOT / "scripts/install_launch_agent.sh")], check=True)
     print()
-    print(f"Codex Relay is running. DM @{username} /tools to verify.")
+    print(f"Codex Relay is running. DM @{username} /health to verify.")
     return 0
 
 

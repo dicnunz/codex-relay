@@ -14,6 +14,7 @@ Outputs:
 assets/codex-relay-demo.mp4
 assets/codex-relay-demo-poster.png
 assets/social-card.svg
+assets/social-card.png
 assets/demo-transcript.svg
 ```
 
@@ -39,11 +40,11 @@ Images, repos, shell, automations, and local Codex tools work when your runtime 
 3. Screenshot/image prompt: show Telegram image support and private attachment handling.
 4. `/automations`: show the exact feature people are asking for, without pretending it bypasses local Codex limits.
 5. Real folder task: `/cd Projects/my-repo`, then ask for a focused README or test pass.
-6. Install frame: show BotFather token, allowlist, LaunchAgent, and `./scripts/doctor.sh`.
+6. Install frame: show BotFather flow with token blurred/redacted, allowlist confirmation, LaunchAgent, and `./scripts/doctor.sh`.
 
 ## Proof Beats
 
-- Show `gpt-5.5` and `xhigh` as defaults, not as a benchmark claim.
+- Show the configured model as a runtime detail, not as a benchmark claim.
 - Show a real wait between request and answer; do not cut it to look instant.
 - Show one useful task, not a pile of unrelated tricks.
 - Show "not VNC, not PWA" as the wedge, not as a dunk.
@@ -68,5 +69,5 @@ Status commands are quick. Real repo, image, browser, and tool tasks take as lon
 
 It can take screenshots from Telegram, work in folders, run tools, inspect automations, and use whatever your local Codex install exposes.
 
-No VNC tiny-screen driving. No PWA app server to maintain. No hosted relay account. Unofficial, local-first, and deliberately small.
+No VNC tiny-screen driving. No PWA app server to maintain. No extra hosted relay account. Unofficial, local-first, and deliberately small.
 ```

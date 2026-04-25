@@ -14,9 +14,9 @@ Text your bot from your phone. Your Mac runs the local Codex app CLI and sends t
 - Codex is the engine.
 - The Mac does the work.
 - The repo is small enough to inspect.
-- Setup is honest: BotFather token, `/start`, allowlist, LaunchAgent.
+- Setup is honest: BotFather bot creation, `/start` allowlist, LaunchAgent.
 - Latency is honest: status commands are quick; real Codex/tool work takes as long as the local run takes.
-- Defaults are honest: `gpt-5.5`, `xhigh` reasoning, local config, normal account limits.
+- Defaults are explicit: configured model, reasoning effort, local config, normal account limits.
 
 ## Why It Can Travel
 
@@ -57,7 +57,7 @@ A PWA behind Cloudflare Access can work, but then the user owns an app-server pr
 ## Latency Line
 
 ```text
-Same latency as a local Codex run, plus Telegram. Fast for bridge/status commands; real Codex, repo, image, browser, and Computer Use tasks wait for `gpt-5.5` with xhigh reasoning to finish.
+Same latency as a local Codex run, plus Telegram. Fast for bridge/status commands; real Codex, repo, image, browser, and Computer Use tasks wait for the configured model and tools to finish.
 ```
 
 ## Safer Claim

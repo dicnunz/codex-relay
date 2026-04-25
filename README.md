@@ -5,7 +5,7 @@
 Text your Mac from Telegram. Codex does the work locally.
 
 <p align="center">
-  <img src="assets/social-card.svg" alt="Codex Relay: Telegram remote for Codex on your Mac" width="100%">
+  <img src="assets/generated/codex-relay-hero.png" alt="Minimal phone-to-Mac relay visual" width="100%">
 </p>
 
 Text your bot from your phone. A LaunchAgent on your Mac runs the local Codex app CLI, waits for the run to finish, and sends the final answer back to Telegram.

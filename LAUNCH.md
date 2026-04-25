@@ -16,7 +16,7 @@ Telegram DM -> LaunchAgent -> Codex CLI -> Mac -> Telegram reply.
 
 No VNC. No extra hosted relay server.
 
-https://github.com/dicnunz/codex-relay
+https://github.com/dicnunz/codex-relay#readme
 ```
 
 Attach: `assets/codex-relay-demo.mp4`
@@ -59,7 +59,7 @@ Same latency as a local Codex run, plus Telegram. Bridge/status commands are qui
 ## Thread Reply
 
 ```text
-Yeah, I wanted the phone path without VNC or maintaining a web app. I made a small local relay: Telegram DM -> LaunchAgent -> installed Codex CLI on the Mac -> Telegram reply when Codex finishes. Unofficial/local-first: github.com/dicnunz/codex-relay
+Yeah, I wanted the phone path without VNC or maintaining a web app. I made a small local relay: Telegram DM -> LaunchAgent -> installed Codex CLI on the Mac -> Telegram reply when Codex finishes. Unofficial/local-first: github.com/dicnunz/codex-relay#readme
 ```
 
 ## Safety Reply

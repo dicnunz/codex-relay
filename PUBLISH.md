@@ -27,6 +27,14 @@ Then in the GitHub repo settings:
 - Upload custom social preview: `assets/social-card.png` (1280x640)
 - Pin the repo.
 
+When sharing the repo in a launch thread, prefer:
+
+```text
+https://github.com/dicnunz/codex-relay#readme
+```
+
+The browser check shows GitHub's default first viewport is mostly the file list; `#readme` lands people closer to the actual pitch, hero image, and install path.
+
 Before publishing:
 
 ```bash
@@ -111,7 +119,7 @@ Telegram DM -> local LaunchAgent -> Codex CLI on your Mac -> Telegram reply.
 
 Images, screenshots, policy, jobs/cancel/history, brief/verbose modes, latency/status, macOS CI, fresh-clone test, native menu bar, and a local status page.
 
-github.com/dicnunz/codex-relay
+github.com/dicnunz/codex-relay#readme
 ```
 
 ## Human-Only Boundary

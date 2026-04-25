@@ -30,6 +30,8 @@ DEFAULT_TIMEOUT_SECONDS = 600
 DEFAULT_MAX_IMAGE_BYTES = 20 * 1024 * 1024
 DEFAULT_IMAGE_RETENTION_DAYS = 7
 MAX_IMAGES_PER_MESSAGE = 4
+DEFAULT_REASONING_EFFORT = "xhigh"
+REASONING_EFFORTS = {"low", "medium", "high", "xhigh"}
 SESSION_RE = re.compile(r"session id:\s*([0-9a-fA-F-]{36})", re.IGNORECASE)
 THREAD_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,39}$")
 STARTED_AT = time.time()
@@ -98,6 +100,25 @@ def env_int(name: str, default: int) -> int:
         raise SystemExit(f"{name} must be an integer")
 
 
+def env_bool(name: str, default: bool = False) -> bool:
+    value = os.environ.get(name, "").strip().lower()
+    if not value:
+        return default
+    if value in {"1", "true", "yes", "on"}:
+        return True
+    if value in {"0", "false", "no", "off"}:
+        return False
+    raise SystemExit(f"{name} must be true or false")
+
+
+def env_choice(name: str, default: str, allowed: set[str]) -> str:
+    value = os.environ.get(name, "").strip().lower() or default
+    if value not in allowed:
+        choices = ", ".join(sorted(allowed))
+        raise SystemExit(f"{name} must be one of: {choices}")
+    return value
+
+
 def now_iso() -> str:
     return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat()
 
@@ -160,13 +181,14 @@ class TelegramAPI:
         self, chat_id: int, text: str, reply_to_message_id: Optional[int] = None
     ) -> None:
         chunks = split_for_telegram(text)
+        threaded_replies = env_bool("CODEX_TELEGRAM_REPLY_TO_MESSAGES", False)
         for chunk in chunks:
             params: dict[str, Any] = {
                 "chat_id": chat_id,
                 "text": chunk,
                 "disable_web_page_preview": "true",
             }
-            if reply_to_message_id is not None:
+            if threaded_replies and reply_to_message_id is not None:
                 params["reply_to_message_id"] = reply_to_message_id
             self.call("sendMessage", params)
             reply_to_message_id = None
@@ -219,9 +241,11 @@ def split_for_telegram(text: str) -> list[str]:
 
 
 class TypingPulse:
-    def __init__(self, api: TelegramAPI, chat_id: int) -> None:
+    def __init__(self, api: TelegramAPI, chat_id: int, action: str = "typing") -> None:
         self.api = api
         self.chat_id = chat_id
+        self.action = action
+        self.interval = max(1, env_int("CODEX_TELEGRAM_TYPING_INTERVAL_SECONDS", 4))
         self.stop = threading.Event()
         self.thread = threading.Thread(target=self._run, daemon=True)
 
@@ -236,10 +260,10 @@ class TypingPulse:
     def _run(self) -> None:
         while not self.stop.is_set():
             try:
-                self.api.send_chat_action(self.chat_id)
+                self.api.send_chat_action(self.chat_id, self.action)
             except Exception:
                 pass
-            self.stop.wait(4)
+            self.stop.wait(self.interval)
 
 
 def state_dir() -> Path:
@@ -489,7 +513,7 @@ def codex_prompt(message_text: str, thread_name: str, image_paths: Optional[list
             f"{image_lines}\n"
             "Use them only for this Telegram task; do not reveal private paths unless needed.\n"
         )
-    return f"""You are {assistant_name}, Codex replying to {user_name} through a private Telegram bot.
+    return f"""You are {assistant_name}, a terse Mac-side Codex remote replying to {user_name} through a private Telegram bot.
 
 Act like the Codex Mac app remote-controlled from {user_name}'s phone.
 Use the live Mac state and the available Codex plugins/tools when useful, including Computer Use, Browser Use, apps/connectors, image generation, and subagents if the runtime exposes them.
@@ -507,7 +531,13 @@ This Telegram chat is mapped to the Codex thread named `{thread_name}`.
 """
 
 
-def base_codex_command(codex_path: str, model: str, approval: str, sandbox: str) -> list[str]:
+def base_codex_command(
+    codex_path: str,
+    model: str,
+    approval: str,
+    sandbox: str,
+    reasoning_effort: str,
+) -> list[str]:
     command = [
         codex_path,
         "exec",
@@ -515,6 +545,8 @@ def base_codex_command(codex_path: str, model: str, approval: str, sandbox: str)
         f'sandbox_mode="{sandbox}"',
         "-c",
         f'approval_policy="{approval}"',
+        "-c",
+        f'model_reasoning_effort="{reasoning_effort}"',
     ]
     if model:
         command.extend(["--model", model])
@@ -531,23 +563,53 @@ def run_codex(
     message_text: str,
     thread: dict[str, Any],
     image_paths: Optional[list[Path]] = None,
-) -> tuple[str, str]:
+) -> tuple[str, str, dict[str, Any]]:
+    session_id = str(thread.get("session_id") or "")
+    image_count = len(image_paths or [])
+    reasoning_effort = env_choice(
+        "CODEX_TELEGRAM_REASONING_EFFORT",
+        DEFAULT_REASONING_EFFORT,
+        REASONING_EFFORTS,
+    )
+    started_at = now_iso()
+    started = time.monotonic()
+
+    def finish(
+        answer: str,
+        new_session_id: str,
+        status: str,
+        exit_code: Optional[int] = None,
+    ) -> tuple[str, str, dict[str, Any]]:
+        stats: dict[str, Any] = {
+            "last_run_at": started_at,
+            "last_latency_seconds": round(time.monotonic() - started, 1),
+            "last_status": status,
+            "last_image_count": image_count,
+            "last_reasoning_effort": reasoning_effort,
+        }
+        if exit_code is not None:
+            stats["last_exit_code"] = exit_code
+        return answer, new_session_id, stats
+
     workdir = Path(str(thread.get("workdir") or default_workdir())).expanduser()
     if not workdir.exists():
-        return (f"Blocked: CODEX_TELEGRAM_WORKDIR does not exist: {workdir}", "")
+        return finish(
+            f"Blocked: CODEX_TELEGRAM_WORKDIR does not exist: {workdir}",
+            session_id,
+            "blocked",
+        )
 
     codex_bin = os.environ.get("CODEX_BIN", "codex")
     codex_path = shutil.which(codex_bin)
     if codex_path is None:
-        return (f"Blocked: could not find Codex CLI: {codex_bin}", "")
+        return finish(f"Blocked: could not find Codex CLI: {codex_bin}", session_id, "blocked")
 
     sandbox = os.environ.get("CODEX_TELEGRAM_SANDBOX", "danger-full-access")
     model = os.environ.get("CODEX_TELEGRAM_MODEL", "gpt-5.5").strip()
     approval = os.environ.get("CODEX_TELEGRAM_APPROVAL", "never")
     timeout = env_int("CODEX_TELEGRAM_TIMEOUT_SECONDS", DEFAULT_TIMEOUT_SECONDS)
     thread_name = str(thread.get("name") or DEFAULT_THREAD)
-    session_id = str(thread.get("session_id") or "")
-    command = base_codex_command(codex_path, model, approval, sandbox)
+    command = base_codex_command(codex_path, model, approval, sandbox, reasoning_effort)
     for image_path in image_paths or []:
         command.extend(["--image", str(image_path)])
 
@@ -573,11 +635,14 @@ def run_codex(
         else:
             answer = ""
     except subprocess.TimeoutExpired:
-        return (
+        return finish(
             f"Blocked: Codex timed out after {timeout} seconds. "
             "The task was stopped before it could reply.",
             session_id,
+            "timeout",
         )
+    except OSError as exc:
+        return finish(f"Blocked: could not start Codex CLI: {exc}", session_id, "blocked")
     finally:
         try:
             output_path.unlink()
@@ -587,12 +652,22 @@ def run_codex(
     if completed.returncode != 0:
         stderr = (completed.stderr or completed.stdout or "").strip()[:1200]
         if stderr:
-            return (f"Codex failed with exit {completed.returncode}:\n{stderr}", session_id)
-        return (f"Codex failed with exit {completed.returncode}.", session_id)
+            return finish(
+                f"Codex failed with exit {completed.returncode}:\n{stderr}",
+                session_id,
+                "failed",
+                completed.returncode,
+            )
+        return finish(
+            f"Codex failed with exit {completed.returncode}.",
+            session_id,
+            "failed",
+            completed.returncode,
+        )
 
     combined_output = "\n".join(part for part in [completed.stdout, completed.stderr] if part)
     new_session_id = extract_session_id(combined_output) or session_id
-    return (answer or "(Codex returned an empty final message.)", new_session_id)
+    return finish(answer or "(Codex returned an empty final message.)", new_session_id, "ok", 0)
 
 
 def command_help() -> str:
@@ -619,17 +694,20 @@ def command_help() -> str:
 
 def status_text(thread: dict[str, Any]) -> str:
     session_status = "started" if thread.get("session_id") else "new"
-    return "\n".join(
-        [
-            f"thread: {thread.get('name', DEFAULT_THREAD)} ({session_status})",
-            f"folder: {thread.get('workdir', default_workdir())}",
-            f"model: {os.environ.get('CODEX_TELEGRAM_MODEL', 'gpt-5.5')}",
-            f"sandbox: {os.environ.get('CODEX_TELEGRAM_SANDBOX', 'danger-full-access')}",
-            f"approval: {os.environ.get('CODEX_TELEGRAM_APPROVAL', 'never')}",
-            f"timeout: {env_int('CODEX_TELEGRAM_TIMEOUT_SECONDS', DEFAULT_TIMEOUT_SECONDS)}s",
-            "telegram images: enabled",
-        ]
-    )
+    lines = [
+        f"thread: {thread.get('name', DEFAULT_THREAD)} ({session_status})",
+        f"folder: {thread.get('workdir', default_workdir())}",
+        f"model: {os.environ.get('CODEX_TELEGRAM_MODEL', 'gpt-5.5')}",
+        f"reasoning effort: {env_choice('CODEX_TELEGRAM_REASONING_EFFORT', DEFAULT_REASONING_EFFORT, REASONING_EFFORTS)}",
+        f"sandbox: {os.environ.get('CODEX_TELEGRAM_SANDBOX', 'danger-full-access')}",
+        f"approval: {os.environ.get('CODEX_TELEGRAM_APPROVAL', 'never')}",
+        f"timeout: {env_int('CODEX_TELEGRAM_TIMEOUT_SECONDS', DEFAULT_TIMEOUT_SECONDS)}s",
+        f"reply threading: {'enabled' if env_bool('CODEX_TELEGRAM_REPLY_TO_MESSAGES', False) else 'disabled'}",
+        f"typing interval: {max(1, env_int('CODEX_TELEGRAM_TYPING_INTERVAL_SECONDS', 4))}s",
+        "telegram images: enabled",
+    ]
+    lines.extend(last_run_lines(thread))
+    return "\n".join(lines)
 
 
 def alive_text(thread: dict[str, Any]) -> str:
@@ -641,10 +719,44 @@ def alive_text(thread: dict[str, Any]) -> str:
             f"thread: {thread.get('name', DEFAULT_THREAD)} ({session_status})",
             f"folder: {thread.get('workdir', default_workdir())}",
             f"model: {os.environ.get('CODEX_TELEGRAM_MODEL', 'gpt-5.5')}",
+            f"reasoning: {env_choice('CODEX_TELEGRAM_REASONING_EFFORT', DEFAULT_REASONING_EFFORT, REASONING_EFFORTS)}",
             "remote: Telegram -> LaunchAgent -> Codex CLI -> this Mac",
             "next: send /tools, /try, or a normal task.",
         ]
     )
+
+
+def last_run_lines(thread: dict[str, Any]) -> list[str]:
+    latency = thread.get("last_latency_seconds")
+    status = str(thread.get("last_status") or "")
+    if latency is None and not status:
+        return ["last run: none"]
+    pieces = [status or "unknown"]
+    if latency is not None:
+        pieces.append(f"{latency}s")
+    image_count = int_or_none(thread.get("last_image_count"))
+    if image_count:
+        image_label = "image" if image_count == 1 else "images"
+        pieces.append(f"{image_count} {image_label}")
+    if thread.get("last_reasoning_effort"):
+        pieces.append(str(thread["last_reasoning_effort"]))
+    lines = [f"last run: {'; '.join(pieces)}"]
+    if thread.get("last_run_at"):
+        lines.append(f"last run at: {thread['last_run_at']}")
+    return lines
+
+
+def record_run_stats(thread: dict[str, Any], stats: dict[str, Any]) -> None:
+    for key in [
+        "last_run_at",
+        "last_latency_seconds",
+        "last_status",
+        "last_exit_code",
+        "last_image_count",
+        "last_reasoning_effort",
+    ]:
+        if key in stats:
+            thread[key] = stats[key]
 
 
 def capabilities_text() -> str:
@@ -690,10 +802,12 @@ def handle_message(
 ) -> None:
     chat = message.get("chat") or {}
     sender = message.get("from") or {}
-    chat_id = int(chat["id"])
+    chat_id = int_or_none(chat.get("id"))
+    if chat_id is None:
+        return
     user_id = sender.get("id")
     if user_id is not None:
-        user_id = int(user_id)
+        user_id = int_or_none(user_id)
     message_id = message.get("message_id")
     text = (message.get("text") or message.get("caption") or "").strip()
     image_specs = image_attachment_specs(message)
@@ -711,11 +825,11 @@ def handle_message(
         return
 
     if not authorized(user_id, chat_id, allowed_users, allowed_chats):
-        api.send_message(chat_id, "Not authorized.", message_id)
+        if env_bool("CODEX_TELEGRAM_REPLY_UNAUTHORIZED", False):
+            api.send_message(chat_id, "Not authorized.", message_id)
         return
 
     if not text and not image_specs:
-        api.send_message(chat_id, "Send text or an image for now.", message_id)
         return
 
     command, _, arg = text.partition(" ")
@@ -834,7 +948,7 @@ def handle_message(
             "workdir": default_workdir(),
         }
         with TypingPulse(api, chat_id):
-            answer, _session_id = run_codex(
+            answer, _session_id, _stats = run_codex(
                 "Use Computer Use to list running apps. Reply with a terse toolbelt status: Computer Use ok/not ok, Telegram running/not, ChatGPT Atlas running/not.",
                 probe,
             )
@@ -853,20 +967,28 @@ def handle_message(
         api.send_message(chat_id, "Unknown command. Use /help.", message_id)
         return
 
-    api.send_chat_action(chat_id)
     thread = ensure_thread(data, chat_id, active_name)
     image_paths: list[Path] = []
     if image_specs:
         try:
-            image_paths = download_telegram_images(api, message)
+            with TypingPulse(api, chat_id, "upload_photo"):
+                image_paths = download_telegram_images(api, message)
         except RuntimeError as exc:
             api.send_message(chat_id, f"Blocked: could not read Telegram image: {exc}", message_id)
             return
-    prompt_text = text or "The user sent image attachment(s). Inspect them and reply tersely with what you can see."
+    prompt_text = text or (
+        "Inspect the attached Telegram image and answer directly. "
+        "Do not mention file paths."
+    )
     with TypingPulse(api, chat_id):
-        answer, session_id = run_codex(prompt_text, thread, image_paths)
+        answer, session_id, stats = run_codex(
+            prompt_text,
+            thread,
+            image_paths,
+        )
     if session_id:
         thread["session_id"] = session_id
+    record_run_stats(thread, stats)
     thread["updated_at"] = now_iso()
     write_threads(threads_path, data)
     api.send_message(chat_id, answer, message_id)
@@ -886,8 +1008,12 @@ def check_config() -> int:
     print(f"codex={shutil.which(codex_bin) or 'missing'}")
     print(f"sandbox={os.environ.get('CODEX_TELEGRAM_SANDBOX', 'danger-full-access')}")
     print(f"model={os.environ.get('CODEX_TELEGRAM_MODEL', 'gpt-5.5')}")
+    print(f"reasoning_effort={env_choice('CODEX_TELEGRAM_REASONING_EFFORT', DEFAULT_REASONING_EFFORT, REASONING_EFFORTS)}")
     print(f"approval={os.environ.get('CODEX_TELEGRAM_APPROVAL', 'never')}")
     print(f"timeout_seconds={env_int('CODEX_TELEGRAM_TIMEOUT_SECONDS', DEFAULT_TIMEOUT_SECONDS)}")
+    print(f"reply_threading={env_bool('CODEX_TELEGRAM_REPLY_TO_MESSAGES', False)}")
+    print(f"reply_unauthorized={env_bool('CODEX_TELEGRAM_REPLY_UNAUTHORIZED', False)}")
+    print(f"typing_interval_seconds={max(1, env_int('CODEX_TELEGRAM_TYPING_INTERVAL_SECONDS', 4))}")
     print(f"telegram_images={'enabled'}")
     if not token:
         return 2
@@ -935,7 +1061,7 @@ def main() -> int:
             print("Stopping.")
             return 0
         except Exception as exc:
-            print(f"Bridge error: {exc}", file=sys.stderr)
+            print(f"Relay error: {exc}", file=sys.stderr)
             time.sleep(5)
 
 

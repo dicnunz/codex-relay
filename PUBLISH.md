@@ -4,6 +4,8 @@ This is the exact public launch path.
 
 ## GitHub
 
+Only run this when you are ready to publish the repo publicly:
+
 ```bash
 gh repo create dicnunz/codex-relay --public --source=. --remote=origin --push
 ```
@@ -31,8 +33,25 @@ cd codex-relay
 Then DM your bot:
 /alive
 /tools
-send a screenshot and ask what broke
+send a screenshot and ask what changed
 ```
+
+Use the latency reply from `LAUNCH_POSTS.md` if anyone asks why it is not instant.
+
+Do not describe it as an always-on autonomous agent. The clean claim is:
+
+```text
+Telegram is the remote. Codex runs locally on the Mac. The reply comes back when Codex finishes.
+```
+
+## Demo Assets
+
+- Video: `assets/codex-relay-demo.mp4`
+- Poster: `assets/codex-relay-demo-poster.png`
+- Social preview: `assets/social-card.svg`
+- README transcript: `assets/demo-transcript.svg`
+
+Before posting, make sure the first frame still shows the complete flow: Telegram -> LaunchAgent -> Codex CLI -> Mac.
 
 ## Human-Only Boundary
 

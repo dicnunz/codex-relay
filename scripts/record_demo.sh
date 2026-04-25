@@ -55,7 +55,7 @@ write_transcript() {
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="640" viewBox="0 0 960 640" role="img" aria-label="Codex Relay Telegram transcript">
   <rect width="960" height="640" fill="#080808"/>
   <rect x="70" y="44" width="820" height="552" rx="30" fill="#111111" stroke="#2a2a2a"/>
-  <text x="112" y="102" fill="#f5f5f5" font-family="Arial, sans-serif" font-size="30" font-weight="700">Codex Bridge</text>
+  <text x="112" y="102" fill="#f5f5f5" font-family="Arial, sans-serif" font-size="30" font-weight="700">Codex Relay</text>
   <text x="112" y="134" fill="#8b8b8b" font-family="Arial, sans-serif" font-size="17">Telegram -> LaunchAgent -> Codex CLI -> Mac</text>
 
   <g font-family="Menlo, monospace" font-size="17">
@@ -101,7 +101,7 @@ write_frame() {
     <rect width="366" height="386" rx="42" fill="#050505" stroke="#303030" stroke-width="2"/>
     <rect x="24" y="28" width="318" height="48" rx="24" fill="#1f2937"/>
     <circle cx="56" cy="52" r="15" fill="#5eead4"/>
-    <text x="84" y="58" fill="#f5f5f5" font-family="Arial, sans-serif" font-size="17" font-weight="700">Codex Bridge</text>
+    <text x="84" y="58" fill="#f5f5f5" font-family="Arial, sans-serif" font-size="17" font-weight="700">Codex Relay</text>
     <rect x="40" y="112" width="226" height="42" rx="20" fill="#2563eb"/>
     <text x="62" y="140" fill="#ffffff" font-family="Menlo, monospace" font-size="16">$phone_a</text>
     <rect x="92" y="184" width="228" height="72" rx="20" fill="#171717" stroke="#333333"/>

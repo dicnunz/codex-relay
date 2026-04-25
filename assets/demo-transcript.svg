@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="640" viewBox="0 0 960 640" role="img" aria-label="Codex Relay Telegram transcript">
   <rect width="960" height="640" fill="#080808"/>
   <rect x="70" y="44" width="820" height="552" rx="30" fill="#111111" stroke="#2a2a2a"/>
-  <text x="112" y="102" fill="#f5f5f5" font-family="Arial, sans-serif" font-size="30" font-weight="700">Codex Bridge</text>
+  <text x="112" y="102" fill="#f5f5f5" font-family="Arial, sans-serif" font-size="30" font-weight="700">Codex Relay</text>
   <text x="112" y="134" fill="#8b8b8b" font-family="Arial, sans-serif" font-size="17">Telegram -> LaunchAgent -> Codex CLI -> Mac</text>
 
   <g font-family="Menlo, monospace" font-size="17">

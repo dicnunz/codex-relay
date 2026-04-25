@@ -6,13 +6,13 @@ Telegram remote for Codex on your Mac.
   <img src="assets/social-card.svg" alt="Codex Relay: Telegram remote for Codex on your Mac" width="100%">
 </p>
 
-Text your bot. Your Mac runs the real Codex CLI locally and replies in Telegram.
+Text your bot from anywhere. Your Mac runs the real Codex CLI locally and replies in Telegram when the job is done.
 
 That is the whole product: Telegram is the remote, Codex is the engine, your Mac is the computer doing the work.
 
 > Unofficial project. Not affiliated with OpenAI or Telegram.
 
-## Demo
+## Demo Story
 
 [Watch the demo](assets/codex-relay-demo.mp4)
 
@@ -23,20 +23,31 @@ That is the whole product: Telegram is the remote, Codex is the engine, your Mac
 ```text
 /alive
 /tools
-send a screenshot and ask what broke
-open Atlas and check what is due
-make this repo launch-ready
+send a screenshot and ask what changed
+/cd Projects/my-repo
+make this repo launch-ready without pushing
 ```
 
-Codex Relay keeps a small local bridge alive with a macOS LaunchAgent. When you message Telegram, the bridge calls the Codex app CLI on your Mac with your configured model, folder, sandbox, tools, and image attachments.
+The demo should make one thing obvious: Telegram is only the remote. The real work happens on the Mac through your installed Codex CLI, in the folder and sandbox you configured.
 
 <p align="center">
   <img src="assets/demo-transcript.svg" alt="Codex Relay Telegram transcript" width="760">
 </p>
 
+## How It Feels
+
+Codex Relay is useful for tasks that are worth waiting for:
+
+- Check a repo while you are away from the laptop.
+- Send a screenshot and ask what changed.
+- Run a small fix, test, or doc pass in a known folder.
+- Ask Codex to inspect local files, apps, or browser state when your Codex runtime exposes those tools.
+
+It is not instant chat. A `/ping` is immediate, but a normal request waits for Codex CLI startup, model time, local tool work, and Telegram delivery. Small text tasks can feel quick; image, browser, Computer Use, repo, or test-running tasks can take tens of seconds or minutes. The default task timeout is 600 seconds.
+
 ## What Works
 
-- `gpt-5.5` by default through the Codex app CLI.
+- `gpt-5.5` with `xhigh` reasoning by default through the Codex app CLI.
 - Private Telegram bot allow-listed to your Telegram user.
 - Named Codex threads: `/new`, `/use`, `/list`, `/reset`.
 - Per-thread folders: `/cd`, `/where`, `/home`.
@@ -70,6 +81,16 @@ The installer:
 
 The only manual credential step is creating a bot with `@BotFather` and pasting its token.
 
+After install, DM your bot:
+
+```text
+/alive
+/tools
+/new repo
+/cd Projects/my-repo
+read this repo and tell me the next best fix
+```
+
 ## Commands
 
 ```text
@@ -88,6 +109,18 @@ The only manual credential step is creating a bot with `@BotFather` and pasting 
 ```
 
 Normal messages go to the active thread. Captions on Telegram images become the prompt; image files are saved privately and attached to Codex.
+
+## Message Style
+
+By default, Codex Relay sends clean Telegram messages instead of explicit reply bubbles quoting your last message. Turn threaded replies back on only if you want that chat style:
+
+```env
+CODEX_TELEGRAM_REPLY_TO_MESSAGES=true
+```
+
+Normal messages use `CODEX_TELEGRAM_MODEL=gpt-5.5` and `CODEX_TELEGRAM_REASONING_EFFORT=xhigh`. Change that env var only if you intentionally want a different reasoning profile.
+
+`/status` shows the active reasoning setting, last run status, and latency after Codex replies.
 
 ## Verify
 
@@ -120,6 +153,7 @@ Use it only with a Telegram account and Mac you trust.
 
 - It uses your normal Codex/OpenAI account limits.
 - It does not mirror the visible Codex desktop chat UI.
+- It waits for Codex to finish before sending the final answer.
 - It is not a generic agent platform.
 - Computer Use and plugin behavior depend on what your local Codex runtime exposes.
 - The bot will feel as capable as the Codex install on that Mac, not more.

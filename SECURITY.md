@@ -13,6 +13,8 @@ Codex Relay is a local remote-control bridge. Treat it like SSH into your Mac th
 
 Anyone who can message the allow-listed Telegram account or steal the bot token can ask Codex to act on the Mac.
 
+This is a remote-control surface, not a sandboxed hosted assistant. Keep the allowlist and token private.
+
 ## Defaults
 
 - `.env` is gitignored.
@@ -30,6 +32,13 @@ Anyone who can message the allow-listed Telegram account or steal the bot token 
 - Keep the bot allowlist narrow.
 - Rotate the bot token with `@BotFather` if it leaks.
 - Use `./scripts/uninstall.sh` to stop the service.
+
+## Operational Limits
+
+- Codex Relay waits for the local Codex CLI run to finish before sending the final answer.
+- Telegram typing status means the bridge is still waiting on Codex; it is not proof that Codex will succeed.
+- Long-running tasks can still time out, fail, or stop at Codex/OpenAI/macOS confirmation boundaries.
+- Public posting, account changes, payments, and anything irreversible should stay human-confirmed.
 
 ## Reporting
 

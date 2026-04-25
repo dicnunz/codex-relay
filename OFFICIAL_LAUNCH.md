@@ -5,7 +5,7 @@
 ```text
 I built a Telegram remote for Codex on your Mac.
 
-Text the bot. Your Mac runs the real Codex CLI locally and replies back.
+Text the bot. Your Mac runs the real Codex CLI locally and replies when the job is done.
 
 No hosted relay. No new agent platform.
 
@@ -26,13 +26,20 @@ cd codex-relay
 Then DM your bot:
 /alive
 /tools
-send a screenshot and ask what broke
+send a screenshot and ask what changed
+```
+
+## If Someone Asks About Latency
+
+```text
+It is not instant chat. Telegram is just the remote; the Mac still starts Codex, runs the model, uses tools, and then sends the final reply back. Simple checks can be quick, but real repo/browser/image tasks often take tens of seconds or minutes. Default timeout is 10 minutes.
 ```
 
 ## Preflight
 
 ```bash
 ./scripts/doctor.sh
+./scripts/status.sh
 ffprobe -v error -show_entries format=duration,size assets/codex-relay-demo.mp4
 git status --short --branch
 ```

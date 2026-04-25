@@ -2,7 +2,7 @@
 
 ## Quality Bar
 
-Codex Relay should feel like a clean Mac remote, not a novelty bot.
+Codex Relay should feel like useful Mac infrastructure, not a novelty bot.
 
 The product is ready to show only when these are true:
 
@@ -11,10 +11,12 @@ The product is ready to show only when these are true:
 - `./scripts/doctor.sh` passes.
 - The configured Codex app CLI can run `gpt-5.5`.
 - Telegram images are saved privately and attached to Codex.
-- The demo video is readable in the first three seconds.
+- The demo video is readable in the first three seconds and shows Telegram -> LaunchAgent -> Codex CLI -> Mac.
 - The README explains latency as real Codex runtime, not instant chat latency.
 - Local latency probe on 2026-04-25: trivial `gpt-5.5` xhigh Codex CLI request returned in about 4.8-6.3 seconds before Telegram delivery.
 - The README explains power and risk without hype.
+- Public copy says unofficial and local-first.
+- Public copy explains the wedge against VNC and PWA/app-server setups without dunking on them.
 
 ## Verified Locally
 
@@ -25,26 +27,39 @@ The product is ready to show only when these are true:
 - Real Telegram image round trip works: Telegram photo + caption -> private attachment save -> Codex `--image` -> Telegram reply.
 - Generated demo is 1280x720 H.264.
 
+## Public Proof Points
+
+- Local LaunchAgent, not a hosted relay account.
+- Local Codex app CLI, not a separate agent backend.
+- Default model is `gpt-5.5` with `xhigh` reasoning.
+- Telegram bot is allow-listed to one configured user/chat.
+- Runtime state lives under `~/Library/Application Support/CodexRelay`.
+- Runtime jobs expose `/jobs`, `/cancel`, and `/history` without logging prompts or responses.
+- Verification path is `./scripts/doctor.sh` plus `./scripts/status.sh`.
+
 ## Latency QA
 
 Expected behavior:
 
 - `/ping`, `/alive`, `/status`, `/where`, and thread commands should return quickly because they do not call Codex.
+- `/jobs`, `/cancel`, and `/history` should respond while a long Codex task is running.
 - Normal prompts show Telegram typing while Codex is running.
 - Normal prompts use `gpt-5.5` with xhigh reasoning.
 - Final replies arrive only after the Codex CLI run finishes.
 - Longer waits are normal for image analysis, browser/Computer Use work, repo edits, tests, package installs, or prompts that require tool calls.
 - A task that exceeds `CODEX_TELEGRAM_TIMEOUT_SECONDS` stops with a timeout message.
+- `/history` stores only safe run receipts: status, latency, thread, job id, image count, folder basename, and reasoning effort.
 
 Public answer:
 
 ```text
-It is not instant chat. Telegram is just the remote; the Mac still starts Codex, runs the model, uses tools, and then sends the final reply back. Simple checks can be quick, but real repo/browser/image tasks often take tens of seconds or minutes. The default timeout is 10 minutes.
+It is not instant chat. Telegram is just the remote; the Mac still starts the local Codex CLI, runs gpt-5.5 with xhigh reasoning, uses whatever local tools are available, and then sends the final reply back. Simple checks can be quick, but real repo/browser/image tasks often take tens of seconds or minutes. The default timeout is 10 minutes.
 ```
 
 ## Current Human-Only Checks
 
-- Repost to X only after the final post text is confirmed.
+- Posting to X is public. Do it only after the final post text, demo video, and GitHub repo are ready.
+- Do not push or publish from an automated pass unless explicitly requested.
 
 ## Launch Bar
 
@@ -56,3 +71,4 @@ Public launch should include:
 4. Install reply.
 5. Latency reply ready.
 6. No exaggerated claims.
+7. Clear unofficial/OpenAI non-affiliation language.

@@ -6,6 +6,8 @@ from __future__ import annotations
 import tempfile
 import os
 import sys
+import threading
+import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -79,13 +81,49 @@ def main() -> int:
     status = relay.status_text(thread)
     assert_true("reply threading: disabled" in status, "expected reply threading status")
     assert_true("reasoning effort: xhigh" in status, "expected default xhigh reasoning status")
+    assert_true("running jobs: 0" in status, "expected running job count")
     assert_true("last run: ok; 1.2s; 1 image" in status, "expected last-run latency status")
 
+    job = relay.RelayJob(123, "main", 2)
+    relay.register_job(job)
+    try:
+        jobs = relay.jobs_text(123, thread)
+        assert_true(job.id in jobs, "expected running job in /jobs output")
+        assert_true("2 images" in jobs, "expected image count in /jobs output")
+        assert_true(f"stop: /cancel {job.id}" in relay.job_ack_text(job), "expected cancel affordance in ack")
+        assert_true(relay.cancel_text(123, job.id) == f"Cancel requested: {job.id}", "expected cancel by id")
+        assert_true(job.cancel_event.is_set(), "expected cancel event")
+    finally:
+        relay.finish_job(job)
+    assert_true("- none" in relay.jobs_text(123, thread), "expected empty jobs output")
+
     with tempfile.TemporaryDirectory() as tmp:
+        old_state_dir = os.environ.get("CODEX_TELEGRAM_STATE_DIR")
+        os.environ["CODEX_TELEGRAM_STATE_DIR"] = str(Path(tmp) / "state")
         target = Path(tmp) / "private.bin"
         relay.write_private_bytes(target, b"ok")
         assert_true(target.read_bytes() == b"ok", "expected private byte write")
         assert_true(oct(target.stat().st_mode & 0o777) == "0o600", "expected private file mode")
+
+        relay.append_history_event(
+            {
+                "at": "2026-04-25T00:00:00+00:00",
+                "chat_id": 123,
+                "thread": "main",
+                "status": "ok",
+                "latency_seconds": 2.3,
+                "image_count": 1,
+                "reasoning_effort": "xhigh",
+                "job_id": "abc12345",
+                "folder": "repo",
+                "prompt": "must not persist",
+            }
+        )
+        events = relay.read_history()
+        assert_true(events and events[0]["status"] == "ok", "expected history event")
+        assert_true("prompt" not in json.dumps(events), "expected sanitized history")
+        history = relay.history_text(123)
+        assert_true("ok; main; 2.3s; 1 image; repo" in history, "expected history text")
 
         fake_codex = Path(tmp) / "fake-codex"
         fake_codex.write_text(
@@ -122,6 +160,38 @@ def main() -> int:
         assert_true(stats["last_status"] == "ok", "expected ok run status")
         assert_true("last_latency_seconds" in stats, "expected latency stats")
         assert_true(stats["last_reasoning_effort"] == "xhigh", "expected reasoning stats")
+
+        slow_codex = Path(tmp) / "slow-codex"
+        slow_codex.write_text(
+            "#!/bin/sh\n"
+            "sleep 30\n"
+        )
+        slow_codex.chmod(0o700)
+        os.environ["CODEX_BIN"] = str(slow_codex)
+        cancel_event = threading.Event()
+
+        def cancel_after_start(_process: object) -> None:
+            cancel_event.set()
+
+        try:
+            answer, _session_id, stats = relay.run_codex(
+                "cancel me",
+                {"workdir": tmp, "name": "main"},
+                cancel_event=cancel_event,
+                process_callback=cancel_after_start,
+            )
+        finally:
+            if old_codex_bin is None:
+                os.environ.pop("CODEX_BIN", None)
+            else:
+                os.environ["CODEX_BIN"] = old_codex_bin
+        assert_true("Canceled:" in answer, "expected canceled answer")
+        assert_true(stats["last_status"] == "canceled", "expected canceled status")
+
+        if old_state_dir is None:
+            os.environ.pop("CODEX_TELEGRAM_STATE_DIR", None)
+        else:
+            os.environ["CODEX_TELEGRAM_STATE_DIR"] = old_state_dir
 
     print("ok: smoke tests")
     return 0

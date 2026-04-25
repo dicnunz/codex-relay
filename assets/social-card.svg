@@ -2,18 +2,18 @@
   <rect width="1280" height="720" fill="#080808"/>
   <rect x="56" y="56" width="1168" height="608" rx="28" fill="#111111" stroke="#2a2a2a"/>
   <text x="104" y="136" fill="#f5f5f5" font-family="Arial, sans-serif" font-size="74" font-weight="700">Codex Relay</text>
-  <text x="108" y="190" fill="#b8b8b8" font-family="Arial, sans-serif" font-size="28">Telegram remote for Codex on your Mac.</text>
-  <text x="108" y="238" fill="#f5f5f5" font-family="Arial, sans-serif" font-size="28">Text the bot. Your Mac does the work.</text>
+  <text x="108" y="190" fill="#b8b8b8" font-family="Arial, sans-serif" font-size="28">Phone remote for Codex on your Mac.</text>
+  <text x="108" y="238" fill="#f5f5f5" font-family="Arial, sans-serif" font-size="28">No VNC. No PWA server. Text the Mac task.</text>
 
   <g transform="translate(108 306)">
     <rect width="320" height="246" rx="34" fill="#050505" stroke="#303030"/>
     <rect x="24" y="26" width="272" height="42" rx="21" fill="#1f2937"/>
     <text x="44" y="54" fill="#f5f5f5" font-family="Arial, sans-serif" font-size="17" font-weight="700">Telegram</text>
     <rect x="34" y="92" width="162" height="38" rx="18" fill="#2563eb"/>
-    <text x="54" y="117" fill="#ffffff" font-family="Menlo, monospace" font-size="15">/alive</text>
+    <text x="54" y="117" fill="#ffffff" font-family="Menlo, monospace" font-size="15">/automations</text>
     <rect x="82" y="148" width="204" height="58" rx="18" fill="#171717" stroke="#333333"/>
-    <text x="102" y="174" fill="#d4d4d4" font-family="Menlo, monospace" font-size="14">Mac is live</text>
-    <text x="102" y="194" fill="#22c55e" font-family="Menlo, monospace" font-size="14">gpt-5.5 ready</text>
+    <text x="102" y="174" fill="#d4d4d4" font-family="Menlo, monospace" font-size="14">job 8f31c2a0</text>
+    <text x="102" y="194" fill="#22c55e" font-family="Menlo, monospace" font-size="14">receipt ready</text>
   </g>
 
   <text x="476" y="438" fill="#d4d4d4" font-family="Arial, sans-serif" font-size="46" font-weight="700">-></text>
@@ -25,9 +25,9 @@
     <circle cx="52" cy="22" r="6" fill="#f59e0b"/>
     <circle cx="74" cy="22" r="6" fill="#22c55e"/>
     <text x="34" y="86" fill="#a7f3d0" font-family="Menlo, monospace" font-size="17">$ codex exec --model gpt-5.5</text>
-    <text x="34" y="126" fill="#e5e5e5" font-family="Menlo, monospace" font-size="17">files, repos, shell</text>
-    <text x="34" y="160" fill="#e5e5e5" font-family="Menlo, monospace" font-size="17">images, Computer Use, subagents</text>
-    <text x="34" y="194" fill="#e5e5e5" font-family="Menlo, monospace" font-size="17">reply back to Telegram</text>
+    <text x="34" y="126" fill="#e5e5e5" font-family="Menlo, monospace" font-size="17">jobs, cancel, history</text>
+    <text x="34" y="160" fill="#e5e5e5" font-family="Menlo, monospace" font-size="17">images, automations, Computer Use</text>
+    <text x="34" y="194" fill="#e5e5e5" font-family="Menlo, monospace" font-size="17">reply with a receipt</text>
     <rect x="34" y="224" width="206" height="34" rx="17" fill="#f5f5f5"/>
     <text x="54" y="247" fill="#111111" font-family="Arial, sans-serif" font-size="15" font-weight="700">local LaunchAgent</text>
   </g>

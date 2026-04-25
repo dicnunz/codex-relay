@@ -8,6 +8,7 @@ import datetime as dt
 import json
 import os
 import re
+import signal
 import shutil
 import subprocess
 import sys
@@ -17,8 +18,9 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 
 ROOT = Path(__file__).resolve().parent
@@ -35,6 +37,7 @@ REASONING_EFFORTS = {"low", "medium", "high", "xhigh"}
 SESSION_RE = re.compile(r"session id:\s*([0-9a-fA-F-]{36})", re.IGNORECASE)
 THREAD_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,39}$")
 STARTED_AT = time.time()
+THREADS_LOCK = threading.Lock()
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".heif"}
 IMAGE_SUFFIX_BY_MIME = {
     "image/gif": ".gif",
@@ -266,12 +269,74 @@ class TypingPulse:
             self.stop.wait(self.interval)
 
 
+class RelayJob:
+    def __init__(self, chat_id: int, thread_name: str, image_count: int) -> None:
+        self.id = uuid.uuid4().hex[:8]
+        self.chat_id = chat_id
+        self.thread_name = thread_name
+        self.image_count = image_count
+        self.started_at = now_iso()
+        self.started_monotonic = time.monotonic()
+        self.cancel_event = threading.Event()
+        self.process: Optional[subprocess.Popen[str]] = None
+        self.lock = threading.Lock()
+
+    def set_process(self, process: subprocess.Popen[str]) -> None:
+        with self.lock:
+            self.process = process
+
+    def cancel(self) -> None:
+        self.cancel_event.set()
+        with self.lock:
+            process = self.process
+        if process is not None:
+            stop_process(process)
+
+    def elapsed(self) -> str:
+        return duration_text(time.monotonic() - self.started_monotonic)
+
+
+JOBS_LOCK = threading.Lock()
+ACTIVE_JOBS: dict[str, RelayJob] = {}
+
+
+def register_job(job: RelayJob) -> None:
+    with JOBS_LOCK:
+        ACTIVE_JOBS[job.id] = job
+
+
+def finish_job(job: RelayJob) -> None:
+    with JOBS_LOCK:
+        ACTIVE_JOBS.pop(job.id, None)
+
+
+def jobs_for_chat(chat_id: int) -> list[RelayJob]:
+    with JOBS_LOCK:
+        return [job for job in ACTIVE_JOBS.values() if job.chat_id == chat_id]
+
+
+def jobs_for_thread(chat_id: int, thread_name: str) -> list[RelayJob]:
+    return [job for job in jobs_for_chat(chat_id) if job.thread_name == thread_name]
+
+
+def find_job(chat_id: int, job_id: str) -> Optional[RelayJob]:
+    with JOBS_LOCK:
+        job = ACTIVE_JOBS.get(job_id)
+    if job and job.chat_id == chat_id:
+        return job
+    return None
+
+
 def state_dir() -> Path:
     return private_dir(Path(os.environ.get("CODEX_TELEGRAM_STATE_DIR", STATE_DIR_DEFAULT)))
 
 
 def attachments_dir() -> Path:
     return private_dir(state_dir() / "attachments")
+
+
+def history_path() -> Path:
+    return state_dir() / "events.jsonl"
 
 
 def int_or_none(value: object) -> Optional[int]:
@@ -412,6 +477,45 @@ def read_threads(path: Path) -> dict[str, Any]:
 
 def write_threads(path: Path, data: dict[str, Any]) -> None:
     write_private_text(path, json.dumps(data, indent=2, sort_keys=True))
+
+
+def append_history_event(event: dict[str, Any]) -> None:
+    allowed = {
+        "at",
+        "chat_id",
+        "thread",
+        "status",
+        "latency_seconds",
+        "image_count",
+        "reasoning_effort",
+        "exit_code",
+        "job_id",
+        "folder",
+    }
+    safe_event = {key: event[key] for key in allowed if key in event and event[key] is not None}
+    path = history_path()
+    line = json.dumps(safe_event, sort_keys=True) + "\n"
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+    with os.fdopen(fd, "a") as handle:
+        handle.write(line)
+    os.chmod(path, 0o600)
+
+
+def read_history(limit: int = 8) -> list[dict[str, Any]]:
+    path = history_path()
+    try:
+        lines = path.read_text().splitlines()
+    except FileNotFoundError:
+        return []
+    events: list[dict[str, Any]] = []
+    for line in lines[-max(1, limit) :]:
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(event, dict):
+            events.append(event)
+    return events
 
 
 def chat_threads(data: dict[str, Any], chat_id: int) -> dict[str, dict[str, Any]]:
@@ -559,10 +663,32 @@ def extract_session_id(output: str) -> str:
     return match.group(1) if match else ""
 
 
+def signal_process(process: subprocess.Popen[str], sig: signal.Signals) -> None:
+    if process.poll() is None:
+        try:
+            os.killpg(process.pid, sig)
+        except OSError:
+            try:
+                process.send_signal(sig)
+            except OSError:
+                pass
+
+
+def stop_process(process: subprocess.Popen[str]) -> tuple[str, str]:
+    signal_process(process, signal.SIGTERM)
+    try:
+        return process.communicate(timeout=5)
+    except subprocess.TimeoutExpired:
+        signal_process(process, signal.SIGKILL)
+        return process.communicate()
+
+
 def run_codex(
     message_text: str,
     thread: dict[str, Any],
     image_paths: Optional[list[Path]] = None,
+    cancel_event: Optional[threading.Event] = None,
+    process_callback: Optional[Callable[[subprocess.Popen[str]], None]] = None,
 ) -> tuple[str, str, dict[str, Any]]:
     session_id = str(thread.get("session_id") or "")
     image_count = len(image_paths or [])
@@ -621,26 +747,57 @@ def run_codex(
     else:
         command.extend(["--output-last-message", str(output_path), "-"])
 
+    process: Optional[subprocess.Popen[str]] = None
+    stdout = ""
+    stderr = ""
+    returncode: Optional[int] = None
+    prompt = codex_prompt(message_text, thread_name, image_paths)
+    input_text: Optional[str] = prompt
+
     try:
-        completed = subprocess.run(
+        process = subprocess.Popen(
             command,
-            input=codex_prompt(message_text, thread_name, image_paths),
-            text=True,
             cwd=workdir,
-            capture_output=True,
-            timeout=timeout,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            start_new_session=True,
         )
+        if process_callback:
+            process_callback(process)
+        deadline = time.monotonic() + timeout
+        while True:
+            if cancel_event and cancel_event.is_set():
+                stop_process(process)
+                return finish(
+                    "Canceled: job stopped before Codex replied.",
+                    session_id,
+                    "canceled",
+                )
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                stop_process(process)
+                return finish(
+                    f"Blocked: Codex timed out after {timeout} seconds. "
+                    "The task was stopped before it could reply.",
+                    session_id,
+                    "timeout",
+                )
+            try:
+                stdout, stderr = process.communicate(
+                    input=input_text,
+                    timeout=min(0.5, remaining),
+                )
+                returncode = process.returncode
+                break
+            except subprocess.TimeoutExpired:
+                input_text = None
+                continue
         if output_path.exists():
             answer = output_path.read_text(errors="replace").strip()
         else:
             answer = ""
-    except subprocess.TimeoutExpired:
-        return finish(
-            f"Blocked: Codex timed out after {timeout} seconds. "
-            "The task was stopped before it could reply.",
-            session_id,
-            "timeout",
-        )
     except OSError as exc:
         return finish(f"Blocked: could not start Codex CLI: {exc}", session_id, "blocked")
     finally:
@@ -649,23 +806,26 @@ def run_codex(
         except OSError:
             pass
 
-    if completed.returncode != 0:
-        stderr = (completed.stderr or completed.stdout or "").strip()[:1200]
-        if stderr:
+    if cancel_event and cancel_event.is_set():
+        return finish("Canceled: job stopped before Codex replied.", session_id, "canceled")
+
+    if returncode != 0:
+        error_output = (stderr or stdout or "").strip()[:1200]
+        if error_output:
             return finish(
-                f"Codex failed with exit {completed.returncode}:\n{stderr}",
+                f"Codex failed with exit {returncode}:\n{error_output}",
                 session_id,
                 "failed",
-                completed.returncode,
+                returncode,
             )
         return finish(
-            f"Codex failed with exit {completed.returncode}.",
+            f"Codex failed with exit {returncode}.",
             session_id,
             "failed",
-            completed.returncode,
+            returncode,
         )
 
-    combined_output = "\n".join(part for part in [completed.stdout, completed.stderr] if part)
+    combined_output = "\n".join(part for part in [stdout, stderr] if part)
     new_session_id = extract_session_id(combined_output) or session_id
     return finish(answer or "(Codex returned an empty final message.)", new_session_id, "ok", 0)
 
@@ -675,6 +835,10 @@ def command_help() -> str:
         [
             "Commands:",
             "/ping - check the bridge",
+            "/jobs - show running and last run",
+            "/history - show recent run receipts",
+            "/cancel [job] - stop a running job",
+            "/automations - inspect Codex automations through Codex",
             "/new name - start a fresh Codex thread",
             "/use name - switch threads",
             "/list - show threads",
@@ -692,8 +856,9 @@ def command_help() -> str:
     )
 
 
-def status_text(thread: dict[str, Any]) -> str:
+def status_text(thread: dict[str, Any], chat_id: Optional[int] = None) -> str:
     session_status = "started" if thread.get("session_id") else "new"
+    running = jobs_for_chat(chat_id) if chat_id is not None else []
     lines = [
         f"thread: {thread.get('name', DEFAULT_THREAD)} ({session_status})",
         f"folder: {thread.get('workdir', default_workdir())}",
@@ -705,8 +870,11 @@ def status_text(thread: dict[str, Any]) -> str:
         f"reply threading: {'enabled' if env_bool('CODEX_TELEGRAM_REPLY_TO_MESSAGES', False) else 'disabled'}",
         f"typing interval: {max(1, env_int('CODEX_TELEGRAM_TYPING_INTERVAL_SECONDS', 4))}s",
         "telegram images: enabled",
+        f"running jobs: {len(running)}",
     ]
     lines.extend(last_run_lines(thread))
+    if running:
+        lines.append("send /jobs for elapsed time or /cancel job-id")
     return "\n".join(lines)
 
 
@@ -746,6 +914,103 @@ def last_run_lines(thread: dict[str, Any]) -> list[str]:
     return lines
 
 
+def job_line(job: RelayJob) -> str:
+    image_count = job.image_count
+    image_note = ""
+    if image_count:
+        image_label = "image" if image_count == 1 else "images"
+        image_note = f"; {image_count} {image_label}"
+    return f"{job.id}: {job.thread_name}; running {job.elapsed()}{image_note}"
+
+
+def jobs_text(chat_id: int, thread: dict[str, Any]) -> str:
+    running = jobs_for_chat(chat_id)
+    lines = ["running jobs:"]
+    if running:
+        lines.extend(f"- {job_line(job)}" for job in sorted(running, key=lambda item: item.started_at))
+        lines.append("cancel: /cancel job-id")
+    else:
+        lines.append("- none")
+    lines.extend(last_run_lines(thread))
+    return "\n".join(lines)
+
+
+def history_text(chat_id: int) -> str:
+    events = [event for event in read_history(12) if event.get("chat_id") == chat_id]
+    if not events:
+        return "history: none"
+    lines = ["history:"]
+    for event in events[-8:]:
+        pieces = [
+            str(event.get("status", "unknown")),
+            str(event.get("thread", DEFAULT_THREAD)),
+        ]
+        if event.get("latency_seconds") is not None:
+            pieces.append(f"{event['latency_seconds']}s")
+        if event.get("image_count"):
+            image_count = int_or_none(event.get("image_count")) or 0
+            image_label = "image" if image_count == 1 else "images"
+            pieces.append(f"{image_count} {image_label}")
+        if event.get("folder"):
+            pieces.append(str(event["folder"]))
+        lines.append("- " + "; ".join(pieces))
+    return "\n".join(lines)
+
+
+def job_ack_text(job: RelayJob) -> str:
+    lines = [
+        f"Working: job {job.id}",
+        f"thread: {job.thread_name}",
+        "status: running",
+    ]
+    if job.image_count:
+        image_label = "image" if job.image_count == 1 else "images"
+        lines.append(f"attachments: {job.image_count} {image_label}")
+    lines.append(f"check: /jobs")
+    lines.append(f"stop: /cancel {job.id}")
+    return "\n".join(lines)
+
+
+def cancel_text(chat_id: int, arg: str) -> str:
+    job_id = arg.strip()
+    if job_id:
+        job = find_job(chat_id, job_id)
+        if not job:
+            return f"No running job: {job_id}"
+        job.cancel()
+        return f"Cancel requested: {job.id}"
+
+    running = jobs_for_chat(chat_id)
+    if not running:
+        return "No running jobs."
+    if len(running) > 1:
+        return "Multiple jobs running. Use /cancel job-id."
+    running[0].cancel()
+    return f"Cancel requested: {running[0].id}"
+
+
+def history_event_from_stats(
+    chat_id: int,
+    thread_name: str,
+    thread: dict[str, Any],
+    job: RelayJob,
+    stats: dict[str, Any],
+) -> dict[str, Any]:
+    folder = Path(str(thread.get("workdir") or default_workdir())).expanduser()
+    return {
+        "at": now_iso(),
+        "chat_id": chat_id,
+        "thread": thread_name,
+        "status": stats.get("last_status"),
+        "latency_seconds": stats.get("last_latency_seconds"),
+        "image_count": stats.get("last_image_count"),
+        "reasoning_effort": stats.get("last_reasoning_effort"),
+        "exit_code": stats.get("last_exit_code"),
+        "job_id": job.id,
+        "folder": folder.name or str(folder),
+    }
+
+
 def record_run_stats(thread: dict[str, Any], stats: dict[str, Any]) -> None:
     for key in [
         "last_run_at",
@@ -759,6 +1024,84 @@ def record_run_stats(thread: dict[str, Any], stats: dict[str, Any]) -> None:
             thread[key] = stats[key]
 
 
+def run_job_worker(
+    api: TelegramAPI,
+    chat_id: int,
+    threads_path: Path,
+    thread_name: str,
+    prompt_text: str,
+    thread_snapshot: dict[str, Any],
+    image_paths: list[Path],
+    job: RelayJob,
+) -> None:
+    try:
+        with TypingPulse(api, chat_id):
+            answer, session_id, stats = run_codex(
+                prompt_text,
+                thread_snapshot,
+                image_paths,
+                job.cancel_event,
+                job.set_process,
+            )
+        with THREADS_LOCK:
+            data = read_threads(threads_path)
+            thread = ensure_thread(data, chat_id, thread_name)
+            if session_id:
+                thread["session_id"] = session_id
+            record_run_stats(thread, stats)
+            thread["updated_at"] = now_iso()
+            write_threads(threads_path, data)
+            append_history_event(
+                history_event_from_stats(chat_id, thread_name, thread, job, stats)
+            )
+        api.send_message(chat_id, answer)
+    except Exception as exc:
+        append_history_event(
+            {
+                "at": now_iso(),
+                "chat_id": chat_id,
+                "thread": thread_name,
+                "status": "relay-failed",
+                "job_id": job.id,
+                "folder": Path(str(thread_snapshot.get("workdir") or default_workdir())).name,
+            }
+        )
+        api.send_message(chat_id, f"Relay job failed: {exc}")
+    finally:
+        finish_job(job)
+
+
+def start_background_job(
+    api: TelegramAPI,
+    chat_id: int,
+    threads_path: Path,
+    thread_name: str,
+    thread: dict[str, Any],
+    prompt_text: str,
+    image_paths: Optional[list[Path]] = None,
+    reply_to_message_id: Optional[int] = None,
+) -> None:
+    image_paths = image_paths or []
+    running_thread_jobs = jobs_for_thread(chat_id, thread_name)
+    if running_thread_jobs:
+        api.send_message(
+            chat_id,
+            "Already working on this thread.\n"
+            + "\n".join(job_line(job) for job in running_thread_jobs),
+            reply_to_message_id,
+        )
+        return
+    job = RelayJob(chat_id, thread_name, len(image_paths))
+    register_job(job)
+    api.send_message(chat_id, job_ack_text(job), reply_to_message_id)
+    worker = threading.Thread(
+        target=run_job_worker,
+        args=(api, chat_id, threads_path, thread_name, prompt_text, dict(thread), image_paths, job),
+        daemon=True,
+    )
+    worker.start()
+
+
 def capabilities_text() -> str:
     return "\n".join(
         [
@@ -769,6 +1112,7 @@ def capabilities_text() -> str:
             "- run tests, scripts, git, and shell commands",
             "- read Telegram photo and image-document attachments",
             "- use Computer Use, Browser Use, apps/connectors, images, and subagents when your Codex runtime exposes them",
+            "- inspect Codex automations with /automations",
             "- operate Atlas/browser sessions when macOS permissions and logins allow it",
             "- draft public messages, commits, and posts, then stop at the confirmation boundary",
             "",
@@ -845,13 +1189,14 @@ def handle_message(
         api.send_message(chat_id, command_help(), message_id)
         return
 
-    data = read_threads(threads_path)
-    active_missing = str(chat_id) not in data.setdefault("active_by_chat", {})
-    active_name = active_thread_name(data, chat_id)
-    ensure_thread(data, chat_id, active_name)
-    set_active_thread(data, chat_id, active_name)
-    if active_missing:
-        write_threads(threads_path, data)
+    with THREADS_LOCK:
+        data = read_threads(threads_path)
+        active_missing = str(chat_id) not in data.setdefault("active_by_chat", {})
+        active_name = active_thread_name(data, chat_id)
+        ensure_thread(data, chat_id, active_name)
+        set_active_thread(data, chat_id, active_name)
+        if active_missing:
+            write_threads(threads_path, data)
 
     if command == "/new":
         try:
@@ -925,7 +1270,20 @@ def handle_message(
 
     if command == "/status":
         thread = ensure_thread(data, chat_id, active_name)
-        api.send_message(chat_id, status_text(thread), message_id)
+        api.send_message(chat_id, status_text(thread, chat_id), message_id)
+        return
+
+    if command in {"/jobs", "/job"}:
+        thread = ensure_thread(data, chat_id, active_name)
+        api.send_message(chat_id, jobs_text(chat_id, thread), message_id)
+        return
+
+    if command == "/history":
+        api.send_message(chat_id, history_text(chat_id), message_id)
+        return
+
+    if command == "/cancel":
+        api.send_message(chat_id, cancel_text(chat_id, arg), message_id)
         return
 
     if command == "/alive":
@@ -939,6 +1297,25 @@ def handle_message(
 
     if command in {"/try", "/demo"}:
         api.send_message(chat_id, try_text(), message_id)
+        return
+
+    if command in {"/automations", "/automation"}:
+        thread = ensure_thread(data, chat_id, active_name)
+        prompt_text = (
+            "Inspect this Mac's Codex automations from live local state. "
+            "Do not print secrets, raw logs, session transcripts, auth files, or private message content. "
+            "Summarize active and paused automations, what each does, and what I can safely command from Telegram. "
+            "Keep it terse and include exact blockers only."
+        )
+        start_background_job(
+            api,
+            chat_id,
+            threads_path,
+            active_name,
+            thread,
+            prompt_text,
+            reply_to_message_id=message_id,
+        )
         return
 
     if command == "/tools":
@@ -980,18 +1357,16 @@ def handle_message(
         "Inspect the attached Telegram image and answer directly. "
         "Do not mention file paths."
     )
-    with TypingPulse(api, chat_id):
-        answer, session_id, stats = run_codex(
-            prompt_text,
-            thread,
-            image_paths,
-        )
-    if session_id:
-        thread["session_id"] = session_id
-    record_run_stats(thread, stats)
-    thread["updated_at"] = now_iso()
-    write_threads(threads_path, data)
-    api.send_message(chat_id, answer, message_id)
+    start_background_job(
+        api,
+        chat_id,
+        threads_path,
+        active_name,
+        thread,
+        prompt_text,
+        image_paths,
+        message_id,
+    )
 
 
 def check_config() -> int:

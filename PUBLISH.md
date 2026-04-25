@@ -1,6 +1,6 @@
 # Publish Plan
 
-This is the exact public launch path.
+This is the exact public launch path. Do not run the publish commands unless the repo is intentionally ready to go public.
 
 ## GitHub
 
@@ -12,10 +12,18 @@ gh repo create dicnunz/codex-relay --public --source=. --remote=origin --push
 
 Then in the GitHub repo settings:
 
-- Set description: `Run Codex on your Mac from Telegram.`
+- Set description: `Private Telegram remote for Codex on your Mac.`
 - Add topics: `codex`, `telegram-bot`, `macos`, `computer-use`, `agents`, `openai`, `launchagent`
 - Add social preview: `assets/social-card.svg`
 - Pin the repo.
+
+Before publishing:
+
+```bash
+python3 -m py_compile codex_relay.py scripts/configure.py
+./scripts/doctor.sh
+./scripts/status.sh
+```
 
 ## X Launch
 
@@ -33,6 +41,8 @@ cd codex-relay
 Then DM your bot:
 /alive
 /tools
+/jobs
+/automations
 send a screenshot and ask what changed
 ```
 
@@ -42,6 +52,18 @@ Do not describe it as an always-on autonomous agent. The clean claim is:
 
 ```text
 Telegram is the remote. Codex runs locally on the Mac. The reply comes back when Codex finishes.
+```
+
+If asked about affiliation:
+
+```text
+Unofficial project. Not affiliated with OpenAI or Telegram. It uses your installed Codex app CLI and your normal account limits.
+```
+
+If the conversation is about VNC, PWA, or app-server setups:
+
+```text
+Those can work. Codex Relay is the smaller shape when you want task-level Codex control from the phone: Telegram DM -> local LaunchAgent -> Codex app CLI -> Telegram reply. No tiny desktop, no Cloudflare Access, no app server to maintain.
 ```
 
 ## Demo Assets
@@ -56,3 +78,5 @@ Before posting, make sure the first frame still shows the complete flow: Telegra
 ## Human-Only Boundary
 
 Posting on X is public. Do it only after the demo video, repo, and post text are final.
+
+Pushing the GitHub repo public is also public. Do not push from a cleanup or docs-polish pass unless that was explicitly requested.

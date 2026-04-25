@@ -15,18 +15,18 @@ write_social() {
   <rect width="1280" height="720" fill="#080808"/>
   <rect x="56" y="56" width="1168" height="608" rx="28" fill="#111111" stroke="#2a2a2a"/>
   <text x="104" y="136" fill="#f5f5f5" font-family="Arial, sans-serif" font-size="74" font-weight="700">Codex Relay</text>
-  <text x="108" y="190" fill="#b8b8b8" font-family="Arial, sans-serif" font-size="28">Telegram remote for Codex on your Mac.</text>
-  <text x="108" y="238" fill="#f5f5f5" font-family="Arial, sans-serif" font-size="28">Text the bot. Your Mac does the work.</text>
+  <text x="108" y="190" fill="#b8b8b8" font-family="Arial, sans-serif" font-size="28">Phone remote for Codex on your Mac.</text>
+  <text x="108" y="238" fill="#f5f5f5" font-family="Arial, sans-serif" font-size="28">No VNC. No PWA server. Text the Mac task.</text>
 
   <g transform="translate(108 306)">
     <rect width="320" height="246" rx="34" fill="#050505" stroke="#303030"/>
     <rect x="24" y="26" width="272" height="42" rx="21" fill="#1f2937"/>
     <text x="44" y="54" fill="#f5f5f5" font-family="Arial, sans-serif" font-size="17" font-weight="700">Telegram</text>
     <rect x="34" y="92" width="162" height="38" rx="18" fill="#2563eb"/>
-    <text x="54" y="117" fill="#ffffff" font-family="Menlo, monospace" font-size="15">/alive</text>
+    <text x="54" y="117" fill="#ffffff" font-family="Menlo, monospace" font-size="15">/automations</text>
     <rect x="82" y="148" width="204" height="58" rx="18" fill="#171717" stroke="#333333"/>
-    <text x="102" y="174" fill="#d4d4d4" font-family="Menlo, monospace" font-size="14">Mac is live</text>
-    <text x="102" y="194" fill="#22c55e" font-family="Menlo, monospace" font-size="14">gpt-5.5 ready</text>
+    <text x="102" y="174" fill="#d4d4d4" font-family="Menlo, monospace" font-size="14">job 8f31c2a0</text>
+    <text x="102" y="194" fill="#22c55e" font-family="Menlo, monospace" font-size="14">receipt ready</text>
   </g>
 
   <text x="476" y="438" fill="#d4d4d4" font-family="Arial, sans-serif" font-size="46" font-weight="700">-></text>
@@ -38,9 +38,9 @@ write_social() {
     <circle cx="52" cy="22" r="6" fill="#f59e0b"/>
     <circle cx="74" cy="22" r="6" fill="#22c55e"/>
     <text x="34" y="86" fill="#a7f3d0" font-family="Menlo, monospace" font-size="17">$ codex exec --model gpt-5.5</text>
-    <text x="34" y="126" fill="#e5e5e5" font-family="Menlo, monospace" font-size="17">files, repos, shell</text>
-    <text x="34" y="160" fill="#e5e5e5" font-family="Menlo, monospace" font-size="17">images, Computer Use, subagents</text>
-    <text x="34" y="194" fill="#e5e5e5" font-family="Menlo, monospace" font-size="17">reply back to Telegram</text>
+    <text x="34" y="126" fill="#e5e5e5" font-family="Menlo, monospace" font-size="17">jobs, cancel, history</text>
+    <text x="34" y="160" fill="#e5e5e5" font-family="Menlo, monospace" font-size="17">images, automations, Computer Use</text>
+    <text x="34" y="194" fill="#e5e5e5" font-family="Menlo, monospace" font-size="17">reply with a receipt</text>
     <rect x="34" y="224" width="206" height="34" rx="17" fill="#f5f5f5"/>
     <text x="54" y="247" fill="#111111" font-family="Arial, sans-serif" font-size="15" font-weight="700">local LaunchAgent</text>
   </g>
@@ -60,20 +60,18 @@ write_transcript() {
 
   <g font-family="Menlo, monospace" font-size="17">
     <rect x="112" y="178" width="286" height="48" rx="20" fill="#2563eb"/>
-    <text x="134" y="209" fill="#ffffff">can you see this image?</text>
-    <rect x="428" y="176" width="176" height="96" rx="20" fill="#171717" stroke="#333333"/>
-    <rect x="452" y="200" width="128" height="48" rx="10" fill="#262626"/>
-    <text x="474" y="231" fill="#a3a3a3">screenshot</text>
+    <text x="134" y="209" fill="#ffffff">/automations</text>
 
-    <rect x="322" y="300" width="430" height="96" rx="22" fill="#171717" stroke="#333333"/>
-    <text x="348" y="332" fill="#f5f5f5">Yes. Image attached to Codex.</text>
-    <text x="348" y="362" fill="#a7f3d0">Saved privately, passed with --image.</text>
+    <rect x="322" y="260" width="430" height="112" rx="22" fill="#171717" stroke="#333333"/>
+    <text x="348" y="292" fill="#f5f5f5">Working: job 8f31c2a0</text>
+    <text x="348" y="322" fill="#a7f3d0">check: /jobs</text>
+    <text x="348" y="352" fill="#a7f3d0">stop: /cancel 8f31c2a0</text>
 
-    <rect x="112" y="428" width="358" height="48" rx="20" fill="#2563eb"/>
-    <text x="134" y="459" fill="#ffffff">make this repo launch-ready</text>
+    <rect x="112" y="412" width="286" height="48" rx="20" fill="#2563eb"/>
+    <text x="134" y="443" fill="#ffffff">/history</text>
 
-    <rect x="322" y="504" width="454" height="58" rx="22" fill="#171717" stroke="#333333"/>
-    <text x="348" y="540" fill="#f5f5f5">Done. Runtime live. Doctor passed.</text>
+    <rect x="322" y="500" width="454" height="58" rx="22" fill="#171717" stroke="#333333"/>
+    <text x="348" y="536" fill="#f5f5f5">ok; automations; 18.4s; xhigh</text>
   </g>
 </svg>
 SVG
@@ -140,8 +138,8 @@ write_transcript
 
 write_frame "$TMP/frame1.svg" \
   "CODEX RELAY" \
-  "Text Codex from Telegram." \
-  "Your Mac runs the real Codex CLI locally." \
+  "Not VNC. Not a PWA." \
+  "Text the task. Your Mac runs Codex locally." \
   "/alive" \
   "Mac is live" \
   "LaunchAgent running" \
@@ -149,29 +147,29 @@ write_frame "$TMP/frame1.svg" \
   "no hosted relay"
 
 write_frame "$TMP/frame2.svg" \
-  "IMAGES WORK" \
-  "Send a screenshot." \
-  "The relay saves it privately and attaches it to Codex." \
-  "what broke here?" \
-  "image attached" \
-  "Telegram photo downloaded" \
-  "passed to Codex with --image" \
-  "answer returns in chat"
+  "JOBS FEEL REAL" \
+  "Long runs have receipts." \
+  "Start work, check status, cancel if needed." \
+  "/jobs" \
+  "job 8f31c2a0" \
+  "Codex runs in background" \
+  "cancelable process group" \
+  "safe history receipt"
 
 write_frame "$TMP/frame3.svg" \
-  "REAL MAC WORK" \
-  "Ask for the actual task." \
-  "Files, repos, apps, shell, Computer Use, subagents." \
-  "/tools" \
-  "Computer Use ok" \
-  "read repo state" \
-  "inspect app state" \
-  "stop at human-only actions"
+  "AUTOMATIONS" \
+  "Ask for the thing people want." \
+  "Inspect Codex automations from the phone." \
+  "/automations" \
+  "checking local state" \
+  "read automation configs" \
+  "summarize blockers" \
+  "no secrets, no raw logs"
 
 write_frame "$TMP/frame4.svg" \
   "INSTALL" \
   "Small repo. Local setup." \
-  "BotFather token, allowlist, LaunchAgent. Nothing hosted." \
+  "BotFather token, allowlist, LaunchAgent. No app server." \
   "git clone" \
   "./scripts/install.sh" \
   "doctor passed" \

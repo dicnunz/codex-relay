@@ -3,6 +3,7 @@
 .codex-relay-state/
 .telegram-codex-state/
 telegram-token-crop*.png
+LAUNCH_POSTS.md
 __pycache__/
 *.pyc
 dist/

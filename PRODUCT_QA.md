@@ -12,11 +12,13 @@ The product is ready to show only when these are true:
 - The configured Codex app CLI can run the selected model.
 - Telegram images are saved privately and attached to Codex.
 - `/screenshot` returns the current Mac screen to Telegram without routing through Codex.
+- `/policy` returns the allowed surface and confirmation boundaries.
 - The demo video is readable in the first three seconds and shows Telegram -> LaunchAgent -> Codex CLI -> Mac.
 - The README explains latency as real Codex runtime, not instant chat latency.
 - `./scripts/fresh_clone_test.sh` passes from a clean checkout.
 - macOS CI runs syntax, smoke, and local demo checks.
 - `./scripts/status_ui.sh` opens a private local status page.
+- `./scripts/menu_bar.sh` builds and opens the native macOS menu-bar controller.
 - Local latency probe on 2026-04-25: trivial configured Codex CLI request returned in about 4.8-6.3 seconds before Telegram delivery.
 - The README explains power and risk without hype.
 - Public copy says unofficial and local-first.
@@ -32,6 +34,7 @@ The product is ready to show only when these are true:
 - Generated demo is 1280x720 H.264.
 - Fresh clone test passes without Telegram secrets.
 - Status UI renders from the live `status.sh` output.
+- Native menu-bar app builds from Swift source.
 
 ## Public Proof Points
 
@@ -43,12 +46,13 @@ The product is ready to show only when these are true:
 - Runtime jobs expose `/jobs`, `/cancel`, and `/history` without logging prompts or responses.
 - Verification path is `./scripts/doctor.sh` plus `./scripts/status.sh`.
 - Clean-checkout path is `./scripts/fresh_clone_test.sh`.
+- Native Mac control surface is `./scripts/menu_bar.sh`.
 
 ## Latency QA
 
 Expected behavior:
 
-- `/ping`, `/alive`, `/health`, `/status`, `/where`, and thread commands should return quickly because they do not call Codex.
+- `/ping`, `/alive`, `/health`, `/policy`, `/status`, `/where`, and thread commands should return quickly because they do not call Codex.
 - `/jobs`, `/cancel`, and `/history` should respond while a long Codex task is running.
 - Normal prompts show Telegram typing while Codex is running.
 - Normal prompts use the configured model and reasoning effort.

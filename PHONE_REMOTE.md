@@ -31,6 +31,7 @@ Best prompts include a folder, a stopping point, and whether public actions are 
 ```text
 /alive
 /health
+/policy
 /screenshot
 /tools
 /try
@@ -49,7 +50,7 @@ make the README feel pinned-worthy
 
 ## Response Timing
 
-- `/ping`, `/alive`, `/health`, `/screenshot`, `/status`, `/where`, `/list`, `/new`, and `/cd` should feel quick.
+- `/ping`, `/alive`, `/health`, `/policy`, `/screenshot`, `/status`, `/where`, `/list`, `/new`, and `/cd` should feel quick.
 - `/jobs`, `/cancel`, and `/history` should work while Codex is busy.
 - Normal prompts wait for Codex to finish.
 - Normal prompts use your configured Codex model and reasoning effort.
@@ -61,6 +62,7 @@ make the README feel pinned-worthy
 - Service: `~/Library/LaunchAgents/com.codexrelay.agent.plist`
 - Runtime dir: `~/Library/Application Support/CodexRelay`
 - Status: `./scripts/status.sh`
+- Menu bar: `./scripts/menu_bar.sh`
 - Stop LaunchAgent: `./scripts/uninstall.sh`
 - Runtime files remain unless removed separately from `~/Library/Application Support/CodexRelay`
 

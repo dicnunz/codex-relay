@@ -17,6 +17,8 @@ Text your bot from your phone. Your Mac runs the local Codex app CLI and sends t
 - Setup is honest: BotFather bot creation, `/start` allowlist, LaunchAgent.
 - Latency is honest: status commands are quick; real Codex/tool work takes as long as the local run takes.
 - Defaults are explicit: configured model, reasoning effort, local config, normal account limits.
+- Safety is visible: `/policy` says what runs, what stops, and what cannot be bypassed.
+- Mac-side status feels native with the optional menu-bar controller.
 
 ## Why It Can Travel
 
@@ -73,6 +75,7 @@ Show:
 
 ```text
 /alive
+/policy
 /screenshot
 /jobs
 /automations

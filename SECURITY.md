@@ -23,6 +23,7 @@ This is a remote-control surface, not a sandboxed hosted assistant. Keep the all
 - Setup allow-lists one Telegram user and chat.
 - Group chats are disabled unless `CODEX_TELEGRAM_ALLOW_GROUP_CHATS=true`.
 - `/screenshot` captures the current Mac screen and sends it to the allow-listed Telegram chat.
+- `/policy` prints the operating boundary directly in Telegram.
 - The default Codex sandbox is `danger-full-access`.
 - The default approval policy is `never`.
 - The default task timeout is 600 seconds.

@@ -14,6 +14,9 @@ printf "Telegram > /alive\n"
 printf "Codex Relay is live.\n"
 printf "remote: Telegram -> LaunchAgent -> Codex CLI -> this Mac\n\n"
 
+printf "Telegram > /policy\n"
+printf "Allowed local Mac work; stops before public, account, payment, delete, or confirmation-sensitive actions.\n\n"
+
 printf "Telegram > /screenshot\n"
 printf "Mac screenshot returned to Telegram.\n\n"
 

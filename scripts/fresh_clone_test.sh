@@ -27,5 +27,8 @@ cd "$TMP/codex-relay"
 python3 -m py_compile codex_relay.py scripts/configure.py scripts/smoke_test.py
 PYTHONPATH="$PWD" python3 scripts/smoke_test.py
 ./scripts/demo.sh
+if command -v swiftc >/dev/null 2>&1; then
+  ./scripts/build_menu_bar.sh >/dev/null
+fi
 
 printf "ok: fresh clone works without Telegram secrets\n"

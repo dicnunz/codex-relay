@@ -1075,6 +1075,7 @@ def command_help() -> str:
             "/where - show current thread and folder",
             "/cd path - set this thread's folder",
             "/status - show runtime state",
+            "/policy - show safety boundaries",
             "/screenshot - send the Mac screen back to Telegram",
             "/latency - show last run timing and timeout",
             "/alive - show the Mac-side remote status",
@@ -1475,6 +1476,19 @@ def capabilities_text() -> str:
     )
 
 
+def policy_text() -> str:
+    return "\n".join(
+        [
+            "Policy:",
+            "- allowed: local repo/file/test/shell work inside your configured Codex sandbox",
+            "- allowed: Telegram images, /screenshot, named threads, local status, and automations inspection",
+            "- stops before: public posts, messages to people, account/security changes, payments, purchases, deletes, or medical/legal/financial submissions",
+            "- cannot bypass: logins, MFA, CAPTCHAs, macOS privacy prompts, site safety barriers, Codex/OpenAI limits, or required confirmations",
+            "- bot access: only the allow-listed Telegram user/chat can run tasks",
+        ]
+    )
+
+
 def try_text() -> str:
     return "\n".join(
         [
@@ -1710,6 +1724,10 @@ def handle_message(
 
     if command in {"/capabilities", "/caps"}:
         api.send_message(chat_id, capabilities_text(), message_id)
+        return
+
+    if command == "/policy":
+        api.send_message(chat_id, policy_text(), message_id)
         return
 
     if command in {"/screenshot", "/screen"}:

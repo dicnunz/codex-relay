@@ -33,6 +33,7 @@ Before publishing:
 python3 -m py_compile codex_relay.py scripts/configure.py
 ./scripts/doctor.sh
 ./scripts/status.sh
+./scripts/build_menu_bar.sh
 ./scripts/fresh_clone_test.sh
 ./scripts/record_demo.sh
 ```
@@ -52,6 +53,7 @@ cd codex-relay
 
 Then DM your bot:
 /alive
+/policy
 /screenshot
 /tools
 /latency
@@ -87,6 +89,7 @@ Those can work. Codex Relay is the smaller shape when you want task-level Codex 
 - Social preview: `assets/social-card.png`
 - README transcript: `assets/demo-transcript.svg`
 - Local status page: `./scripts/status_ui.sh`
+- Native menu bar: `./scripts/menu_bar.sh`
 
 Before posting, make sure the first frame still shows the complete flow: Telegram -> LaunchAgent -> Codex CLI -> Mac.
 
@@ -106,7 +109,7 @@ Codex Relay is now the cleaner version of the idea:
 
 Telegram DM -> local LaunchAgent -> Codex CLI on your Mac -> Telegram reply.
 
-Images, jobs/cancel/history, brief/verbose modes, latency/status, macOS CI, fresh-clone test, and a tiny local status page.
+Images, screenshots, policy, jobs/cancel/history, brief/verbose modes, latency/status, macOS CI, fresh-clone test, native menu bar, and a local status page.
 
 github.com/dicnunz/codex-relay
 ```

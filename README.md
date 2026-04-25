@@ -45,11 +45,20 @@ Then DM your bot:
 ```text
 /alive
 /health
+/policy
 /screenshot
 /tools
 /latency
 send a screenshot and ask what changed
 ```
+
+Optional Mac control surface:
+
+```bash
+./scripts/menu_bar.sh
+```
+
+That builds and opens a small native menu-bar app for status, doctor, restart, update, and copying the best first Telegram commands.
 
 ## Explainer
 
@@ -103,6 +112,7 @@ It is not instant chat. A `/ping` is immediate, but a normal request waits for C
 - Private Telegram bot allow-listed to your Telegram user.
 - Background jobs with `/jobs`, `/cancel`, and `/history`.
 - Fast local bridge checks with `/health`.
+- Plain safety boundary with `/policy`.
 - Mac screenshots returned to Telegram with `/screenshot`.
 - Latency and mode controls with `/latency`, `/brief`, and `/verbose`.
 - Named Codex threads: `/new`, `/use`, `/list`, `/reset`.
@@ -111,6 +121,7 @@ It is not instant chat. A `/ping` is immediate, but a normal request waits for C
 - `/automations` shortcut for a guardrailed Codex automation inspection.
 - Mac-side files, repos, shell, images, and whatever tools your local Codex runtime exposes.
 - macOS LaunchAgent so the relay stays running after setup.
+- Optional native macOS menu-bar controller for status, doctor, restart, and update.
 - Local config only. No extra hosted relay account.
 
 ## Architecture
@@ -130,6 +141,7 @@ Requirements:
 - Codex Mac app installed and signed in
 - Telegram account
 - A Telegram bot token from `@BotFather`
+- Apple command line tools if you want the optional menu-bar app
 
 The installer:
 
@@ -162,6 +174,7 @@ read this repo and tell me the next best fix
 /alive        live route, model, folder, uptime
 /status       current thread and runtime config
 /health       fast local bridge checks, no Codex run
+/policy      safety boundary and allowed surface
 /screenshot   send the Mac screen back to Telegram
 /latency      last Codex run timing and timeout
 /jobs         running jobs and last run
@@ -205,13 +218,14 @@ Use `/brief` for phone-friendly answers and `/verbose` when you want debugging d
 ./scripts/doctor.sh
 ./scripts/status.sh
 ./scripts/status_ui.sh
+./scripts/menu_bar.sh
 ./scripts/demo.sh
 ./scripts/fresh_clone_test.sh
 ```
 
 Use `doctor.sh` as the pass/fail install check. Use `status.sh` for diagnostics. `doctor.sh` checks the Mac environment, Codex CLI, local config, LaunchAgent, runtime copy, Python syntax, and smoke tests.
 
-`status_ui.sh` opens a private local status page generated from `status.sh`. `fresh_clone_test.sh` clones the repo into a temp folder and proves the no-secrets demo path works from a clean checkout.
+`status_ui.sh` opens a private local status page generated from `status.sh`. `menu_bar.sh` builds and opens the optional native macOS menu-bar controller. `fresh_clone_test.sh` clones the repo into a temp folder and proves the no-secrets demo path works from a clean checkout.
 
 Runtime files:
 
@@ -237,6 +251,7 @@ Codex Relay is intentionally powerful. If you expose your Telegram bot, you are 
 - Only the allow-listed Telegram user/chat can run Codex.
 - Group chats are disabled unless `CODEX_TELEGRAM_ALLOW_GROUP_CHATS=true`.
 - Images are stored in the private runtime state directory and pruned by retention settings.
+- `/policy` shows the same boundary inside Telegram.
 - High-risk actions can still hit Codex/OpenAI/macOS confirmations.
 - It cannot bypass logins, MFA, macOS privacy prompts, site safety barriers, account limits, or mandatory confirmations.
 

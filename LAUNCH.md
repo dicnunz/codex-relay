@@ -33,6 +33,7 @@ cd codex-relay
 Then DM your bot:
 /alive
 /health
+/policy
 /screenshot
 /tools
 /latency
@@ -64,7 +65,7 @@ Yeah, I wanted the phone path without VNC or maintaining a web app. I made a sma
 ## Safety Reply
 
 ```text
-The important boundary is the allowlist. Only the configured Telegram user/chat can call Codex, and the bot token/config stay local. Still, it is a path to Codex on your Mac, so use it only with a Telegram account and Mac you trust.
+The important boundary is the allowlist plus `/policy`. Only the configured Telegram user/chat can call Codex, the bot token/config stay local, and the bot says where it stops before public, account, payment, delete, or confirmation-sensitive actions.
 ```
 
 ## Checklist

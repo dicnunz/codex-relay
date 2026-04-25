@@ -35,5 +35,6 @@ printf "\nRunning doctor...\n"
 "$ROOT/scripts/doctor.sh"
 
 printf "\nDone. DM your bot:\n"
-printf "/alive\n/health\n/screenshot\n/tools\n/latency\n"
+printf "/alive\n/health\n/policy\n/screenshot\n/tools\n/latency\n"
+printf "\nOptional Mac control surface:\n./scripts/menu_bar.sh\n"
 printf "\nLocal status page:\n./scripts/status_ui.sh\n"

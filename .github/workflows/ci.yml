@@ -19,6 +19,8 @@ jobs:
         run: PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$PWD" /usr/bin/python3 scripts/smoke_test.py
       - name: Local demo
         run: PYTHONDONTWRITEBYTECODE=1 ./scripts/demo.sh
+      - name: Native menu bar build
+        run: ./scripts/build_menu_bar.sh
       - name: Generated demo assets
         run: |
           brew install ffmpeg

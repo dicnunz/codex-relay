@@ -80,10 +80,10 @@ write_transcript() {
     <text x="348" y="350" fill="#a7f3d0">Telegram -&gt; Codex CLI</text>
 
     <rect x="112" y="420" width="286" height="48" rx="18" fill="#2563eb"/>
-    <text x="134" y="451" fill="#ffffff">send screenshot</text>
+    <text x="134" y="451" fill="#ffffff">/policy</text>
 
     <rect x="322" y="500" width="454" height="58" rx="20" fill="#171717" stroke="#333333"/>
-    <text x="348" y="536" fill="#f5f5f5">job 34bd91aa; image attached</text>
+    <text x="348" y="536" fill="#f5f5f5">shows exactly where it stops</text>
   </g>
 </svg>
 SVG
@@ -186,7 +186,7 @@ write_frame "$TMP/frame4.svg" \
   "git clone" \
   "./scripts/install.sh" \
   "doctor passed" \
-  "status UI available" \
+  "native menu bar" \
   "github.com/dicnunz/codex-relay"
 
 for i in 1 2 3 4; do

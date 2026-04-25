@@ -377,6 +377,20 @@ def run_tests() -> int:
         )
         assert_true("health:" in str(fake_style.calls[-1][1].get("text")), "expected /health command")
 
+        relay.handle_message(
+            fake_style,
+            {
+                "message_id": 6,
+                "chat": {"id": 123, "type": "private"},
+                "from": {"id": 1},
+                "text": "/policy",
+            },
+            {1},
+            {123},
+            threads_path,
+        )
+        assert_true("Policy:" in str(fake_style.calls[-1][1].get("text")), "expected /policy command")
+
         original_capture_screenshot = relay.capture_screenshot
         screenshot_path = Path(tmp) / "screen.jpg"
         screenshot_path.write_bytes(b"fake-jpeg")
@@ -385,7 +399,7 @@ def run_tests() -> int:
             relay.handle_message(
                 fake_style,
                 {
-                    "message_id": 6,
+                    "message_id": 7,
                     "chat": {"id": 123, "type": "private"},
                     "from": {"id": 1},
                     "text": "/screenshot",

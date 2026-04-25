@@ -2,7 +2,7 @@
 
 [![ci](https://github.com/dicnunz/codex-relay/actions/workflows/ci.yml/badge.svg)](https://github.com/dicnunz/codex-relay/actions/workflows/ci.yml)
 
-Text your Mac's Codex from Telegram. No VNC. No extra hosted relay server.
+Text your Mac from Telegram. Codex does the work locally.
 
 <p align="center">
   <img src="assets/social-card.svg" alt="Codex Relay: Telegram remote for Codex on your Mac" width="100%">
@@ -12,7 +12,7 @@ Text your bot from your phone. A LaunchAgent on your Mac runs the local Codex ap
 
 That is the product: Telegram is the remote, Codex is the engine, and your Mac is the machine doing the work.
 
-Use this when VNC is the wrong shape and a PWA/app-server setup is more surface area than you want: no tiny desktop, no Cloudflare Access, no web app server to maintain. You text the task; the Mac does the work.
+Use this when screen sharing is the wrong shape and you do not want to maintain another web service. You text the task; the Mac does the work.
 
 > Unofficial project. Not affiliated with OpenAI or Telegram.
 
@@ -30,6 +30,8 @@ Runtime files remain under `~/Library/Application Support/CodexRelay` unless you
 
 ## Quickstart
 
+You need the Codex Mac app signed in, a Telegram account, and a dedicated bot token from `@BotFather`. The installer verifies the token, gives you a one-time `/start` code, allow-lists your DM, and starts the LaunchAgent.
+
 ```bash
 git clone https://github.com/dicnunz/codex-relay.git
 cd codex-relay
@@ -43,6 +45,7 @@ Then DM your bot:
 ```text
 /alive
 /health
+/screenshot
 /tools
 /latency
 send a screenshot and ask what changed
@@ -58,6 +61,7 @@ send a screenshot and ask what changed
 
 ```text
 /alive
+/screenshot
 /tools
 /jobs
 send a screenshot and ask what changed
@@ -85,12 +89,13 @@ The demo is meant to make one thing obvious: Telegram is only the remote. The re
 Codex Relay is useful when a task is worth handing to the Mac even though you are not at the keyboard:
 
 - Check a repo while you are away from the laptop.
+- Ask for `/screenshot` and see what is on the Mac without opening VNC.
 - Send a screenshot and ask what changed.
 - Run a small fix, test, or doc pass in a known folder.
 - Ask Codex to inspect local files, apps, or browser state when your Codex runtime exposes those tools.
 - Check Codex automations from your phone with `/automations`.
 
-It is not instant chat. A `/ping` is immediate, but a normal request waits for Codex CLI startup, your configured model and reasoning effort, local tool work, and Telegram delivery. Small text tasks can feel quick; image, browser, Computer Use, repo, or test-running tasks can take tens of seconds or minutes. The default task timeout is 600 seconds.
+It is not instant chat. A `/ping` is immediate, but a normal request waits for Codex CLI startup, your configured model and reasoning effort, local tool work, and Telegram delivery. Small text tasks can feel quick; image, browser, repo, test-running, and desktop/app-control tasks can take tens of seconds or minutes. Desktop/app-control behavior depends on what your local Codex runtime exposes. The default task timeout is 600 seconds.
 
 ## What It Does
 
@@ -98,6 +103,7 @@ It is not instant chat. A `/ping` is immediate, but a normal request waits for C
 - Private Telegram bot allow-listed to your Telegram user.
 - Background jobs with `/jobs`, `/cancel`, and `/history`.
 - Fast local bridge checks with `/health`.
+- Mac screenshots returned to Telegram with `/screenshot`.
 - Latency and mode controls with `/latency`, `/brief`, and `/verbose`.
 - Named Codex threads: `/new`, `/use`, `/list`, `/reset`.
 - Per-thread folders: `/cd`, `/where`, `/home`.
@@ -130,7 +136,7 @@ The installer:
 1. Finds the Codex app CLI.
 2. Asks for your Telegram bot token.
 3. Verifies the bot with Telegram.
-4. Waits for you to send `/start`.
+4. Waits for you to send the one-time `/start` code.
 5. Allow-lists your Telegram user.
 6. Installs and starts the LaunchAgent.
 7. Runs `doctor.sh` so setup failures are caught immediately.
@@ -142,6 +148,7 @@ After install, DM your bot:
 ```text
 /alive
 /health
+/screenshot
 /tools
 /latency
 /new repo
@@ -155,6 +162,7 @@ read this repo and tell me the next best fix
 /alive        live route, model, folder, uptime
 /status       current thread and runtime config
 /health       fast local bridge checks, no Codex run
+/screenshot   send the Mac screen back to Telegram
 /latency      last Codex run timing and timeout
 /jobs         running jobs and last run
 /cancel id    stop a running job
@@ -201,7 +209,7 @@ Use `/brief` for phone-friendly answers and `/verbose` when you want debugging d
 ./scripts/fresh_clone_test.sh
 ```
 
-`doctor.sh` checks the Mac environment, Codex CLI, local config, LaunchAgent, runtime copy, Python syntax, and smoke tests.
+Use `doctor.sh` as the pass/fail install check. Use `status.sh` for diagnostics. `doctor.sh` checks the Mac environment, Codex CLI, local config, LaunchAgent, runtime copy, Python syntax, and smoke tests.
 
 `status_ui.sh` opens a private local status page generated from `status.sh`. `fresh_clone_test.sh` clones the repo into a temp folder and proves the no-secrets demo path works from a clean checkout.
 

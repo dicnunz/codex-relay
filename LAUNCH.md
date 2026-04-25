@@ -7,9 +7,12 @@ Use this as the canonical public copy. Keep claims plain: unofficial, local-firs
 ```text
 I built Codex Relay.
 
-Text your Mac's Codex from Telegram.
+I can text my Mac from Telegram.
 
-Telegram DM -> local LaunchAgent -> Codex CLI -> Telegram reply.
+I send: "make this repo launch-ready without pushing."
+My Mac runs local Codex, does the work, and replies when it finishes.
+
+Telegram DM -> LaunchAgent -> Codex CLI -> Mac -> Telegram reply.
 
 No VNC. No extra hosted relay server.
 
@@ -30,6 +33,7 @@ cd codex-relay
 Then DM your bot:
 /alive
 /health
+/screenshot
 /tools
 /latency
 /jobs
@@ -65,7 +69,7 @@ The important boundary is the allowlist. Only the configured Telegram user/chat 
 
 ## Checklist
 
-- Use the generated demo only as an explainer, or replace it with real sanitized Telegram/Codex footage.
+- Use the generated video only if you label it as an explainer. For launch, prefer real sanitized Telegram footage showing one repo task from prompt to final reply.
 - Keep the post plain. No "AGI", "always-on agent", "instant", or fake autonomy language.
 - Reply with install commands.
 - Keep the latency reply nearby.

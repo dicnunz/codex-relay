@@ -4,20 +4,27 @@ This is the exact public launch path. Do not run the publish commands unless the
 
 ## GitHub
 
-Only run this when you are ready to publish the repo publicly:
+If `origin` already points at `dicnunz/codex-relay`:
 
 ```bash
 git status --short
 git add -A
 git commit -m "Prepare public Codex Relay launch"
+git push -u origin main
+gh repo edit dicnunz/codex-relay --visibility public
+```
+
+If the repo does not exist yet:
+
+```bash
 gh repo create dicnunz/codex-relay --public --source=. --remote=origin --push
 ```
 
 Then in the GitHub repo settings:
 
 - Set description: `Private Telegram remote for Codex on your Mac.`
-- Add topics: `codex`, `telegram-bot`, `macos`, `computer-use`, `agents`, `openai`, `launchagent`
-- Add social preview: `assets/social-card.png`
+- Add topics: `codex`, `codex-cli`, `telegram-bot`, `macos`, `launchagent`, `local-first`, `openai`
+- Upload custom social preview: `assets/social-card.png`
 - Pin the repo.
 
 Before publishing:
@@ -32,7 +39,7 @@ python3 -m py_compile codex_relay.py scripts/configure.py
 
 ## X Launch
 
-Use `assets/codex-relay-demo.mp4` as the video.
+Use `assets/codex-relay-demo.mp4` only if you label it as an explainer. For launch, prefer real sanitized Telegram footage showing one repo task from prompt to final reply.
 
 Use the main post from `LAUNCH.md`, then immediately reply with:
 
@@ -45,6 +52,7 @@ cd codex-relay
 
 Then DM your bot:
 /alive
+/screenshot
 /tools
 /latency
 /jobs
@@ -84,11 +92,12 @@ Before posting, make sure the first frame still shows the complete flow: Telegra
 
 Best demo shape:
 
-1. Phone sends `/health`, then `/tools`.
-2. Telegram shows a real job receipt.
+1. Phone sends a real repo task.
+2. Telegram shows a job receipt.
 3. Mac visibly runs local Codex.
 4. Telegram receives the final answer.
-5. End on the repo quickstart, not a marketing slide.
+5. Run `/screenshot` and `/health` as proof.
+6. End on the repo quickstart, not a marketing slide.
 
 Second-post angle:
 

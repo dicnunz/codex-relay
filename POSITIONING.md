@@ -28,11 +28,12 @@ VNC is better when you need raw pixel-level desktop control. Codex Relay is bett
 
 ## App Server Wedge
 
-A PWA behind Cloudflare Access can work, but then the user owns an app-server product. Codex Relay keeps the surface smaller: Telegram bot token, local LaunchAgent, local Codex CLI, allowlisted user.
+A web app behind an access layer can work, but then the user owns an app-server product. Codex Relay keeps the surface smaller: Telegram bot token, local LaunchAgent, local Codex CLI, allowlisted user.
 
 ## Useful For
 
 - "I am away from my laptop, but I need Codex to check a repo."
+- "Show me the Mac screen from Telegram."
 - "Here is a screenshot. Tell me what changed."
 - "Check my Codex automations."
 - "Run the obvious local verification before I get back."
@@ -57,7 +58,7 @@ A PWA behind Cloudflare Access can work, but then the user owns an app-server pr
 ## Latency Line
 
 ```text
-Same latency as a local Codex run, plus Telegram. Fast for bridge/status commands; real Codex, repo, image, browser, and Computer Use tasks wait for the configured model and tools to finish.
+Same latency as a local Codex run, plus Telegram. Fast for bridge/status commands; real Codex, repo, image, browser, desktop/app-control, and test tasks wait for the configured model and tools to finish.
 ```
 
 ## Safer Claim
@@ -72,6 +73,7 @@ Show:
 
 ```text
 /alive
+/screenshot
 /jobs
 /automations
 send screenshot: "what changed?"

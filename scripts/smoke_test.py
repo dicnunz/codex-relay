@@ -39,6 +39,25 @@ class FakeTelegram(relay.TelegramAPI):
         self.calls.append((method, params or {}))
         return {"ok": True, "result": {}}
 
+    def send_photo(
+        self,
+        chat_id: int,
+        path: Path,
+        caption: str = "",
+        reply_to_message_id: Optional[int] = None,
+    ) -> None:
+        self.calls.append(
+            (
+                "sendPhoto",
+                {
+                    "chat_id": chat_id,
+                    "path": str(path),
+                    "caption": caption,
+                    "reply_to_message_id": reply_to_message_id,
+                },
+            )
+        )
+
 
 class FakeResponse:
     def __init__(self, chunks: list[bytes], headers: Optional[dict[str, str]] = None) -> None:
@@ -358,6 +377,27 @@ def run_tests() -> int:
         )
         assert_true("health:" in str(fake_style.calls[-1][1].get("text")), "expected /health command")
 
+        original_capture_screenshot = relay.capture_screenshot
+        screenshot_path = Path(tmp) / "screen.jpg"
+        screenshot_path.write_bytes(b"fake-jpeg")
+        relay.capture_screenshot = lambda: screenshot_path
+        try:
+            relay.handle_message(
+                fake_style,
+                {
+                    "message_id": 6,
+                    "chat": {"id": 123, "type": "private"},
+                    "from": {"id": 1},
+                    "text": "/screenshot",
+                },
+                {1},
+                {123},
+                threads_path,
+            )
+        finally:
+            relay.capture_screenshot = original_capture_screenshot
+        assert_true(fake_style.calls[-1][0] == "sendPhoto", "expected /screenshot to send a photo")
+
         background_calls = []
         original_start_background_job = relay.start_background_job
 
@@ -369,7 +409,7 @@ def run_tests() -> int:
             relay.handle_message(
                 fake_style,
                 {
-                    "message_id": 6,
+                    "message_id": 7,
                     "chat": {"id": 123, "type": "private"},
                     "from": {"id": 1},
                     "text": "/tools",

@@ -14,6 +14,8 @@ if [ ! -f "$ROOT/.env" ]; then
   exit 2
 fi
 
+"$ROOT/codex_relay.py" --check-config >/dev/null
+
 mkdir -p "$HOME/Library/LaunchAgents" "$RUNTIME" "$STATE_DIR"
 chmod 700 "$RUNTIME" "$STATE_DIR"
 umask 077
@@ -92,6 +94,7 @@ PLIST
 chmod 600 "$PLIST"
 
 launchctl bootout "gui/$(id -u)" "$PLIST" >/dev/null 2>&1 || true
+launchctl enable "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
 launchctl kickstart -k "gui/$(id -u)/$LABEL"
 launchctl print "gui/$(id -u)/$LABEL" | sed -n '1,40p'

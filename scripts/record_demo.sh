@@ -34,11 +34,11 @@ write_social() {
     <rect x="24" y="26" width="272" height="42" rx="20" fill="#1f2937"/>
     <circle cx="48" cy="47" r="10" fill="#5eead4"/>
     <text x="70" y="54" fill="#f5f5f5" font-family="Arial, sans-serif" font-size="17" font-weight="700">Telegram DM</text>
-    <rect x="34" y="92" width="162" height="38" rx="16" fill="#2563eb"/>
-    <text x="54" y="117" fill="#ffffff" font-family="Menlo, monospace" font-size="15">/health</text>
+    <rect x="34" y="92" width="236" height="38" rx="16" fill="#2563eb"/>
+    <text x="54" y="117" fill="#ffffff" font-family="Menlo, monospace" font-size="15">make repo launch-ready</text>
     <rect x="82" y="148" width="204" height="58" rx="18" fill="#171717" stroke="#333333"/>
-    <text x="102" y="174" fill="#d4d4d4" font-family="Menlo, monospace" font-size="14">health ok</text>
-    <text x="102" y="194" fill="#22c55e" font-family="Menlo, monospace" font-size="14">Mac ready</text>
+    <text x="102" y="174" fill="#d4d4d4" font-family="Menlo, monospace" font-size="14">done</text>
+    <text x="102" y="194" fill="#22c55e" font-family="Menlo, monospace" font-size="14">tests passed</text>
   </g>
 
   <text x="476" y="438" fill="#d4d4d4" font-family="Arial, sans-serif" font-size="46" font-weight="700">-&gt;</text>
@@ -50,8 +50,8 @@ write_social() {
     <circle cx="52" cy="22" r="6" fill="#f59e0b"/>
     <circle cx="74" cy="22" r="6" fill="#22c55e"/>
     <text x="34" y="86" fill="#a7f3d0" font-family="Menlo, monospace" font-size="17">$ codex exec</text>
-    <text x="34" y="126" fill="#e5e5e5" font-family="Menlo, monospace" font-size="17">local LaunchAgent</text>
-    <text x="34" y="160" fill="#e5e5e5" font-family="Menlo, monospace" font-size="17">images, folders, tools</text>
+    <text x="34" y="126" fill="#e5e5e5" font-family="Menlo, monospace" font-size="17">read repo state</text>
+    <text x="34" y="160" fill="#e5e5e5" font-family="Menlo, monospace" font-size="17">edit files and run tests</text>
     <text x="34" y="194" fill="#e5e5e5" font-family="Menlo, monospace" font-size="17">final answer back to Telegram</text>
     <rect x="34" y="224" width="244" height="34" rx="17" fill="#f5f5f5"/>
     <text x="54" y="247" fill="#111111" font-family="Arial, sans-serif" font-size="15" font-weight="700">unofficial and local-first</text>
@@ -112,7 +112,7 @@ write_frame() {
     <rect x="24" y="28" width="318" height="48" rx="22" fill="#1f2937"/>
     <circle cx="56" cy="52" r="15" fill="#5eead4"/>
     <text x="84" y="58" fill="#f5f5f5" font-family="Arial, sans-serif" font-size="17" font-weight="700">Codex Relay</text>
-    <rect x="40" y="112" width="226" height="42" rx="18" fill="#2563eb"/>
+    <rect x="40" y="112" width="286" height="42" rx="18" fill="#2563eb"/>
     <text x="62" y="140" fill="#ffffff" font-family="Menlo, monospace" font-size="16">$phone_a</text>
     <rect x="92" y="184" width="228" height="72" rx="18" fill="#171717" stroke="#333333"/>
     <text x="114" y="216" fill="#f5f5f5" font-family="Menlo, monospace" font-size="16">$phone_b</text>
@@ -153,27 +153,27 @@ write_frame "$TMP/frame1.svg" \
   "CODEX RELAY" \
   "Telegram is the remote." \
   "The Mac still runs local Codex. No tiny desktop." \
-  "/health" \
-  "Mac is live" \
-  "LaunchAgent running" \
-  "configured model" \
-  "no hosted relay"
+  "make repo launch-ready" \
+  "job 8f31c2a0" \
+  "read repo state" \
+  "edit files and run tests" \
+  "reply when finished"
 
 write_frame "$TMP/frame2.svg" \
   "REAL WORK" \
-  "Track long runs." \
-  "Start work, check status, cancel if needed." \
-  "/jobs" \
-  "job 8f31c2a0" \
-  "Codex runs in background" \
-  "cancelable process tree" \
-  "history without prompt logs"
+  "Ask for the screen." \
+  "No VNC. Telegram gets a current Mac screenshot." \
+  "/screenshot" \
+  "Mac screen sent" \
+  "capture local screen" \
+  "send photo to Telegram" \
+  "stay on the phone"
 
 write_frame "$TMP/frame3.svg" \
   "SCREENSHOTS" \
   "Send an image. Ask the Mac." \
   "Telegram photos become private Codex image inputs." \
-  "screenshot" \
+  "sent screenshot" \
   "image attached" \
   "save private attachment" \
   "pass with --image" \
@@ -193,7 +193,7 @@ for i in 1 2 3 4; do
   render_svg "$TMP/frame$i.svg" "$TMP/frame$i.png"
 done
 
-cp "$TMP/frame2.png" "$POSTER"
+cp "$TMP/frame1.png" "$POSTER"
 
 ffmpeg -y -v error \
   -loop 1 -t 3.4 -i "$TMP/frame1.png" \

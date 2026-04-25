@@ -11,6 +11,7 @@ The product is ready to show only when these are true:
 - `./scripts/doctor.sh` passes.
 - The configured Codex app CLI can run the selected model.
 - Telegram images are saved privately and attached to Codex.
+- `/screenshot` returns the current Mac screen to Telegram without routing through Codex.
 - The demo video is readable in the first three seconds and shows Telegram -> LaunchAgent -> Codex CLI -> Mac.
 - The README explains latency as real Codex runtime, not instant chat latency.
 - `./scripts/fresh_clone_test.sh` passes from a clean checkout.
@@ -51,8 +52,9 @@ Expected behavior:
 - `/jobs`, `/cancel`, and `/history` should respond while a long Codex task is running.
 - Normal prompts show Telegram typing while Codex is running.
 - Normal prompts use the configured model and reasoning effort.
+- `/screenshot` is a bridge command, not a Codex model call.
 - Final replies arrive only after the Codex CLI run finishes.
-- Longer waits are normal for image analysis, browser/Computer Use work, repo edits, tests, package installs, or prompts that require tool calls.
+- Longer waits are normal for image analysis, browser or desktop/app-control work, repo edits, tests, package installs, or prompts that require tool calls.
 - A task that exceeds `CODEX_TELEGRAM_TIMEOUT_SECONDS` stops with a timeout message.
 - `/history` stores only safe run receipts: status, latency, thread, job id, image count, folder basename, and reasoning effort.
 

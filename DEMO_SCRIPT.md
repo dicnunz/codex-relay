@@ -36,11 +36,12 @@ Images, repos, shell, automations, and local Codex tools work when your runtime 
 ## Shot List
 
 1. `/alive`: show the Mac route, folder, model, and uptime.
-2. `/jobs`: show that long Mac work has a job id, status, and cancel path.
-3. Screenshot/image prompt: show Telegram image support and private attachment handling.
-4. `/automations`: show the exact feature people are asking for, without pretending it bypasses local Codex limits.
-5. Real folder task: `/cd Projects/my-repo`, then ask for a focused README or test pass.
-6. Install frame: show BotFather flow with token blurred/redacted, allowlist confirmation, LaunchAgent, and `./scripts/doctor.sh`.
+2. `/screenshot`: show the Mac can send back the current screen without VNC.
+3. `/jobs`: show that long Mac work has a job id, status, and cancel path.
+4. Screenshot/image prompt: show Telegram image support and private attachment handling.
+5. `/automations`: show the exact feature people are asking for, without pretending it bypasses local Codex limits.
+6. Real folder task: `/cd Projects/my-repo`, then ask for a focused README or test pass.
+7. Install frame: show BotFather flow with token blurred/redacted, allowlist confirmation, LaunchAgent, and `./scripts/doctor.sh`.
 
 ## Proof Beats
 
@@ -67,7 +68,7 @@ You text the bot. A local LaunchAgent calls the Codex app CLI. Codex works on th
 
 Status commands are quick. Real repo, image, browser, and tool tasks take as long as the local Codex run takes.
 
-It can take screenshots from Telegram, work in folders, run tools, inspect automations, and use whatever your local Codex install exposes.
+It can send back the Mac screen, receive screenshots or photos you send in Telegram, work in folders, run tools, inspect automations, and use whatever your local Codex install exposes.
 
 No VNC tiny-screen driving. No PWA app server to maintain. No extra hosted relay account. Unofficial, local-first, and deliberately small.
 ```

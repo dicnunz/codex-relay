@@ -99,6 +99,11 @@ def write_private_bytes(path: Path, content: bytes) -> None:
     os.chmod(path, 0o600)
 
 
+def read_private_bytes(path: Path) -> bytes:
+    with open(path, "rb") as handle:
+        return handle.read()
+
+
 def env_int(name: str, default: int) -> int:
     value = os.environ.get(name, "").strip()
     if not value:
@@ -208,6 +213,54 @@ class TelegramAPI:
 
     def send_chat_action(self, chat_id: int, action: str = "typing") -> None:
         self.call("sendChatAction", {"chat_id": chat_id, "action": action})
+
+    def send_photo(
+        self,
+        chat_id: int,
+        path: Path,
+        caption: str = "",
+        reply_to_message_id: Optional[int] = None,
+    ) -> None:
+        boundary = "codexrelay-" + uuid.uuid4().hex
+        fields: dict[str, str] = {
+            "chat_id": str(chat_id),
+        }
+        if caption:
+            fields["caption"] = caption
+        if env_bool("CODEX_TELEGRAM_REPLY_TO_MESSAGES", False) and reply_to_message_id is not None:
+            fields["reply_to_message_id"] = str(reply_to_message_id)
+
+        body = bytearray()
+        for key, value in fields.items():
+            body.extend(f"--{boundary}\r\n".encode())
+            body.extend(f'Content-Disposition: form-data; name="{key}"\r\n\r\n'.encode())
+            body.extend(value.encode())
+            body.extend(b"\r\n")
+        body.extend(f"--{boundary}\r\n".encode())
+        body.extend(
+            f'Content-Disposition: form-data; name="photo"; filename="{path.name}"\r\n'.encode()
+        )
+        body.extend(b"Content-Type: image/jpeg\r\n\r\n")
+        body.extend(read_private_bytes(path))
+        body.extend(b"\r\n")
+        body.extend(f"--{boundary}--\r\n".encode())
+
+        request = urllib.request.Request(
+            self.base + "sendPhoto",
+            data=bytes(body),
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=70) as response:
+                payload = json.loads(response.read().decode())
+        except urllib.error.HTTPError as exc:
+            body_text = exc.read().decode(errors="replace")[:600]
+            raise RuntimeError(f"Telegram HTTP {exc.code}: {body_text}") from exc
+        except urllib.error.URLError as exc:
+            raise RuntimeError(f"Telegram network error: {exc.reason}") from exc
+        if not payload.get("ok"):
+            raise RuntimeError(f"Telegram API error: {payload}")
 
     def get_updates(self, offset: Optional[int]) -> list[dict[str, Any]]:
         params: dict[str, Any] = {"timeout": 50, "allowed_updates": json.dumps(["message"])}
@@ -409,6 +462,10 @@ def attachments_dir() -> Path:
     return private_dir(state_dir() / "attachments")
 
 
+def captures_dir() -> Path:
+    return private_dir(state_dir() / "captures")
+
+
 def history_path() -> Path:
     return state_dir() / "events.jsonl"
 
@@ -528,6 +585,34 @@ def download_telegram_images(api: TelegramAPI, message: dict[str, Any]) -> list[
         saved.append(target)
 
     return saved
+
+
+def capture_screenshot() -> Path:
+    if sys.platform != "darwin":
+        raise RuntimeError("screenshots are macOS-only")
+    if not shutil.which("screencapture"):
+        raise RuntimeError("screencapture command is missing")
+    root = captures_dir()
+    prune_attachment_cache(root)
+    target = root / f"screenshot-{dt.datetime.now().strftime('%Y%m%d-%H%M%S')}.jpg"
+    try:
+        subprocess.run(
+            ["screencapture", "-x", "-t", "jpg", str(target)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=10,
+            check=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        detail = (exc.stderr or "").strip()
+        raise RuntimeError(detail or "screencapture failed") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError("screencapture timed out") from exc
+    if not target.exists() or target.stat().st_size == 0:
+        raise RuntimeError("screencapture produced no image")
+    os.chmod(target, 0o600)
+    return target
 
 
 def read_offset(path: Path) -> Optional[int]:
@@ -732,7 +817,7 @@ def codex_prompt(
 
 Act like the Codex Mac app remote-controlled from {user_name}'s phone.
 Use the live Mac state and the available Codex plugins/tools when useful, including Computer Use, Browser Use, apps/connectors, image generation, and subagents if the runtime exposes them.
-{user_name} has explicitly allowed Atlas/browser/computer-use control for Telegram tasks. For browser tasks, prefer Atlas or Browser Use when appropriate.
+{user_name} has explicitly allowed local app, browser, and computer-use control for Telegram tasks when the runtime exposes those tools.
 Read live state first. Act directly. Keep replies terse and concrete.
 Default voice: Mac-side operator, not generic chatbot. Say what changed, what you verified, and the next human-only boundary if there is one.
 Reply style: {style}. {style_instruction(style)}
@@ -990,6 +1075,7 @@ def command_help() -> str:
             "/where - show current thread and folder",
             "/cd path - set this thread's folder",
             "/status - show runtime state",
+            "/screenshot - send the Mac screen back to Telegram",
             "/latency - show last run timing and timeout",
             "/alive - show the Mac-side remote status",
             "/brief - terse replies for this thread",
@@ -1022,7 +1108,7 @@ def launchagent_running() -> Optional[bool]:
         return None
     if result.returncode != 0:
         return False
-    return "state = running" in result.stdout or "pid = " in result.stdout
+    return "state = running" in result.stdout or re.search(r"pid = [1-9][0-9]*", result.stdout) is not None
 
 
 def health_text() -> str:
@@ -1378,6 +1464,7 @@ def capabilities_text() -> str:
             "- inspect and edit local repos/files",
             "- run tests, scripts, git, and shell commands",
             "- read Telegram photo and image-document attachments",
+            "- send a current Mac screenshot back to Telegram with /screenshot",
             "- use Computer Use, Browser Use, apps/connectors, images, and subagents when your Codex runtime exposes them",
             "- inspect Codex automations with /automations",
             "- operate local app/browser sessions when macOS permissions and logins allow it",
@@ -1392,14 +1479,14 @@ def try_text() -> str:
     return "\n".join(
         [
             "Good first prompts:",
-            "1. /tools",
+            "1. /screenshot",
             "2. /new school",
             "   check the app or browser state I already have open and summarize the next action",
             "3. /new repo",
             "   /cd Projects/my-repo",
             "   read this repo and make the README more impressive without pushing",
             "4. send a screenshot/photo and ask what I should do next",
-            "5. use Computer Use to tell me what apps are open and what looks unfinished",
+            "5. use available local tools to tell me what apps are open and what looks unfinished",
         ]
     )
 
@@ -1623,6 +1710,15 @@ def handle_message(
 
     if command in {"/capabilities", "/caps"}:
         api.send_message(chat_id, capabilities_text(), message_id)
+        return
+
+    if command in {"/screenshot", "/screen"}:
+        try:
+            with TypingPulse(api, chat_id, "upload_photo"):
+                screenshot = capture_screenshot()
+                api.send_photo(chat_id, screenshot, "Mac screenshot", message_id)
+        except RuntimeError as exc:
+            api.send_message(chat_id, f"Blocked: screenshot failed: {exc}", message_id)
         return
 
     if command in {"/try", "/demo"}:

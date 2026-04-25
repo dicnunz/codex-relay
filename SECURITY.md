@@ -7,6 +7,7 @@ Codex Relay is a local remote-control bridge. Treat it like SSH into your Mac th
 - Telegram bot token in `.env` and runtime config.
 - Thread state in `~/Library/Application Support/CodexRelay/state`.
 - Telegram image attachments in the private runtime state directory until retention pruning.
+- Mac screenshots captured by `/screenshot` in the private runtime state directory.
 - Codex work runs on your Mac through your installed Codex CLI.
 
 ## Main Risk
@@ -21,6 +22,7 @@ This is a remote-control surface, not a sandboxed hosted assistant. Keep the all
 - Runtime config is written with private file permissions.
 - Setup allow-lists one Telegram user and chat.
 - Group chats are disabled unless `CODEX_TELEGRAM_ALLOW_GROUP_CHATS=true`.
+- `/screenshot` captures the current Mac screen and sends it to the allow-listed Telegram chat.
 - The default Codex sandbox is `danger-full-access`.
 - The default approval policy is `never`.
 - The default task timeout is 600 seconds.

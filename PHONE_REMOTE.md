@@ -2,7 +2,7 @@
 
 Keep the Mac open, awake, online, and signed into Codex. Then talk to the Telegram bot like a terse remote for real Codex work, not like an instant chat app.
 
-This is better than VNC when the goal is to command Codex, not manually drive a tiny mirrored desktop. It is also smaller than a PWA/app-server setup: no Cloudflare Access, no phone terminal, no product surface to maintain.
+This is better than VNC when the goal is to command Codex, not manually drive a tiny mirrored desktop. It is also smaller than maintaining another web service: no phone terminal, no extra product surface.
 
 ## Good Mental Model
 
@@ -31,6 +31,7 @@ Best prompts include a folder, a stopping point, and whether public actions are 
 ```text
 /alive
 /health
+/screenshot
 /tools
 /try
 /jobs
@@ -48,11 +49,11 @@ make the README feel pinned-worthy
 
 ## Response Timing
 
-- `/ping`, `/alive`, `/health`, `/status`, `/where`, `/list`, `/new`, and `/cd` should feel quick.
+- `/ping`, `/alive`, `/health`, `/screenshot`, `/status`, `/where`, `/list`, `/new`, and `/cd` should feel quick.
 - `/jobs`, `/cancel`, and `/history` should work while Codex is busy.
 - Normal prompts wait for Codex to finish.
 - Normal prompts use your configured Codex model and reasoning effort.
-- Image, browser, Computer Use, repo-editing, and test-running prompts can take tens of seconds or minutes.
+- Image, browser, repo-editing, test-running, and desktop/app-control prompts can take tens of seconds or minutes. Desktop/app-control behavior depends on what your local Codex runtime exposes.
 - If the request is public or irreversible, ask Codex to draft and stop before posting, pushing, paying, deleting, or changing accounts.
 
 ## Runtime

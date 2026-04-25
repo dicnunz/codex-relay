@@ -25,9 +25,10 @@ assets/codex-relay-demo-poster.png
 
 1. Mac open on desk, Codex signed in.
 2. Phone opens Telegram bot.
-3. Send `/status`.
+3. Send `/alive`.
 4. Send `/tools`.
-5. Send:
+5. Send `/try`.
+6. Send:
 
 ```text
 /new demo
@@ -35,8 +36,8 @@ assets/codex-relay-demo-poster.png
 tell me the three most recent files here and what they look like they are for
 ```
 
-6. Show the Mac doing local work and Telegram getting the answer.
-7. End on the README install command.
+7. Show the Mac doing local work and Telegram getting the answer.
+8. End on the README install command.
 
 ## 30-Second Voiceover
 

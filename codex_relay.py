@@ -28,6 +28,7 @@ TELEGRAM_LIMIT = 4096
 DEFAULT_THREAD = "main"
 SESSION_RE = re.compile(r"session id:\s*([0-9a-fA-F-]{36})")
 THREAD_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,39}$")
+STARTED_AT = time.time()
 
 
 def load_dotenv(path: Path = ENV_PATH) -> None:
@@ -76,6 +77,23 @@ def env_int(name: str, default: int) -> int:
 
 def now_iso() -> str:
     return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat()
+
+
+def duration_text(seconds: float) -> str:
+    seconds = max(0, int(seconds))
+    days, seconds = divmod(seconds, 86400)
+    hours, seconds = divmod(seconds, 3600)
+    minutes, seconds = divmod(seconds, 60)
+    parts = []
+    if days:
+        parts.append(f"{days}d")
+    if hours:
+        parts.append(f"{hours}h")
+    if minutes:
+        parts.append(f"{minutes}m")
+    if not parts:
+        parts.append(f"{seconds}s")
+    return " ".join(parts[:2])
 
 
 def default_workdir() -> str:
@@ -288,6 +306,7 @@ Act like the Codex Mac app remote-controlled from {user_name}'s phone.
 Use the live Mac state and the available Codex plugins/tools when useful, including Computer Use, Browser Use, apps/connectors, image generation, and subagents if the runtime exposes them.
 {user_name} has explicitly allowed Atlas/browser/computer-use control for Telegram tasks. For browser tasks, prefer Atlas or Browser Use when appropriate.
 Read live state first. Act directly. Keep replies terse and concrete.
+Default voice: Mac-side operator, not generic chatbot. Say what changed, what you verified, and the next human-only boundary if there is one.
 Do not reveal secrets, tokens, auth files, private logs, session transcripts, or personal content.
 If a requested action is blocked by credentials, permissions, network, macOS privacy, tool availability, or mandatory safety confirmation, state the exact blocker and the next human-only step.
 This Telegram chat is mapped to the Codex thread named `{thread_name}`.
@@ -386,6 +405,9 @@ def command_help() -> str:
             "/where - show current thread and folder",
             "/cd path - set this thread's folder",
             "/status - show runtime state",
+            "/alive - show the Mac-side remote status",
+            "/capabilities - show what this remote can do",
+            "/try - show good first prompts",
             "/tools - probe Codex tool access",
             "/reset - restart the current thread",
             "",
@@ -403,6 +425,54 @@ def status_text(thread: dict[str, Any]) -> str:
             f"model: {os.environ.get('CODEX_TELEGRAM_MODEL', 'gpt-5.5')}",
             f"sandbox: {os.environ.get('CODEX_TELEGRAM_SANDBOX', 'danger-full-access')}",
             f"approval: {os.environ.get('CODEX_TELEGRAM_APPROVAL', 'never')}",
+        ]
+    )
+
+
+def alive_text(thread: dict[str, Any]) -> str:
+    session_status = "started" if thread.get("session_id") else "new"
+    return "\n".join(
+        [
+            "Codex Relay is live.",
+            f"uptime: {duration_text(time.time() - STARTED_AT)}",
+            f"thread: {thread.get('name', DEFAULT_THREAD)} ({session_status})",
+            f"folder: {thread.get('workdir', default_workdir())}",
+            f"model: {os.environ.get('CODEX_TELEGRAM_MODEL', 'gpt-5.5')}",
+            "remote: Telegram -> LaunchAgent -> Codex CLI -> this Mac",
+            "next: send /tools, /try, or a normal task.",
+        ]
+    )
+
+
+def capabilities_text() -> str:
+    return "\n".join(
+        [
+            "Codex Relay can:",
+            "- run Codex on this Mac from Telegram",
+            "- keep named Codex threads with separate folders",
+            "- inspect and edit local repos/files",
+            "- run tests, scripts, git, and shell commands",
+            "- use Computer Use, Browser Use, apps/connectors, images, and subagents when your Codex runtime exposes them",
+            "- operate Atlas/browser sessions when macOS permissions and logins allow it",
+            "- draft public messages, commits, and posts, then stop at the confirmation boundary",
+            "",
+            "It cannot bypass logins, MFA, macOS privacy prompts, Codex limits, or mandatory safety confirmations.",
+        ]
+    )
+
+
+def try_text() -> str:
+    return "\n".join(
+        [
+            "Good first prompts:",
+            "1. /tools",
+            "2. /new school",
+            "   go on Atlas and check what assignments are due",
+            "3. /new repo",
+            "   /cd Projects/my-repo",
+            "   read this repo and make the README more impressive without pushing",
+            "4. use Computer Use to tell me what apps are open and what looks unfinished",
+            "5. make a launch plan for this folder, then do the first safe local step",
         ]
     )
 
@@ -537,6 +607,19 @@ def handle_message(
     if command == "/status":
         thread = ensure_thread(data, chat_id, active_name)
         api.send_message(chat_id, status_text(thread), message_id)
+        return
+
+    if command == "/alive":
+        thread = ensure_thread(data, chat_id, active_name)
+        api.send_message(chat_id, alive_text(thread), message_id)
+        return
+
+    if command in {"/capabilities", "/caps"}:
+        api.send_message(chat_id, capabilities_text(), message_id)
+        return
+
+    if command in {"/try", "/demo"}:
+        api.send_message(chat_id, try_text(), message_id)
         return
 
     if command == "/tools":

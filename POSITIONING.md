@@ -30,3 +30,5 @@ I left my Mac open on my desk and controlled Codex from bed.
 ```
 
 The first video should show `/tools`, then one real Mac task, then the GitHub install command.
+
+The first actual use should show `/alive`, `/tools`, and `/try`. That gives the product a clear pulse before it starts doing work.

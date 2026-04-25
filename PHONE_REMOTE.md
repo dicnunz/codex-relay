@@ -15,6 +15,10 @@ generate a cover image for this idea and send me the file path
 ## Thread Flow
 
 ```text
+/alive
+/tools
+/try
+
 /new school
 /cd Documents
 check what class files look important this week

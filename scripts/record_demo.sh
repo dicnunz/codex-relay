@@ -56,10 +56,10 @@ SVG
 write_slide "$TMP/slide1.svg" \
   "Codex Relay" \
   "Run Codex on your Mac from Telegram" \
-  "/status" \
+  "/alive" \
+  "Mac is live" \
   "gpt-5.5 ready" \
   "LaunchAgent running" \
-  "approval never" \
   "Mac open on desk. You are on your phone."
 
 write_slide "$TMP/slide2.svg" \
@@ -81,13 +81,13 @@ write_slide "$TMP/slide3.svg" \
   "Not hosted. Your Mac does the work."
 
 write_slide "$TMP/slide4.svg" \
-  "Named Threads" \
-  "School, portfolio, main, anything" \
-  "/new school" \
-  "/cd Documents" \
-  "thread school" \
-  "folder Documents" \
-  "One bot. Multiple Codex threads."
+  "Codex Runtime" \
+  "Same serious tools from a phone chat" \
+  "spawn subagent" \
+  "README title" \
+  "Subagent available" \
+  "Result: Codex Relay" \
+  "Not a chatbot gimmick. Codex does the work."
 
 write_slide "$TMP/slide5.svg" \
   "Install" \

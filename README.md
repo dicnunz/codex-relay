@@ -41,6 +41,7 @@ Codex works locally on the Mac and replies in Telegram.
 - Per-thread folders: `/cd`, `/where`, `/home`.
 - macOS LaunchAgent, so it stays alive after setup.
 - Tool probe for Computer Use and app visibility.
+- Subagents when your local Codex runtime exposes them.
 - Local `.env`; no cloud relay or extra agent account.
 
 ## Install
@@ -71,8 +72,10 @@ Setup flow:
 Then DM the bot:
 
 ```text
+/alive
 /status
 /tools
+/try
 ```
 
 If anything feels off:
@@ -93,10 +96,27 @@ Normal messages go to the active Codex thread.
 /cd path      set this thread's folder
 /home         set this thread to your home folder
 /status       show runtime state
+/alive        show the Mac-side remote status
+/capabilities show what this remote can do
+/try          show good first prompts
 /tools        test Computer Use/tool access
 /reset        restart the current thread
 /ping         check the bridge
 ```
+
+## First-Run Feel
+
+Codex Relay should feel like a Mac-side operator waiting in your pocket:
+
+```text
+/alive
+/tools
+/try
+```
+
+Then send a real task. The best demos are ordinary but concrete: check a web app, clean up a repo, inspect a folder, summarize what is open, draft a post and stop before sending.
+
+The key promise is not "another bot." It is one private chat that can reach your Mac, your Codex sessions, your repos, your apps, and your tools.
 
 ## Run It Through Codex
 

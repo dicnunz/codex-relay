@@ -27,6 +27,7 @@ for label, needle in [
     ("Token", "TELEGRAM_BOT_TOKEN=set"),
     ("Model", "model="),
     ("Reasoning", "reasoning_effort="),
+    ("Speed", "speed="),
     ("Style", "reply_style="),
     ("Images", "telegram_images=enabled"),
 ]:

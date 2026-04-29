@@ -45,8 +45,16 @@ if command -v swiftc >/dev/null 2>&1; then
 fi
 
 ISO_HOME="$TMP/home"
+FAKE_BIN="$TMP/bin"
 mkdir -p "$ISO_HOME"
+mkdir -p "$FAKE_BIN"
+cat > "$FAKE_BIN/codex" <<'SH'
+#!/bin/sh
+printf 'fake codex for installer preflight\n'
+SH
+chmod 700 "$FAKE_BIN/codex"
 HOME="$ISO_HOME" \
+PATH="$FAKE_BIN:$PATH" \
 CODEX_RELAY_LABEL="com.codexrelay.fresh.$RANDOM" \
 CODEX_MISSION_CONTROL_HOME="$ISO_HOME/Codex Mission Control" \
 CMC_ADOPT_AGENTS=yes \

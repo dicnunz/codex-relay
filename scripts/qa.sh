@@ -87,6 +87,13 @@ rm -f "$hub/_ops/GO_NO_GO.md"
 ./cmc --hub "$hub" status > "$tmp/status_missing.out"
 grep -q 'missing GO_NO_GO.md' "$tmp/status_missing.out"
 
+CODEX_MISSION_CONTROL_HOME="$hub" ./scripts/status_ui.sh --no-open > "$tmp/dashboard.out"
+dashboard_path="$(cat "$tmp/dashboard.out")"
+test -s "$dashboard_path"
+grep -q 'Your Codex control room' "$dashboard_path"
+grep -q 'Surface lanes' "$dashboard_path"
+grep -q 'Copy approval packet' "$dashboard_path"
+
 ./scripts/demo.sh
 ./scripts/fresh_clone_test.sh
 

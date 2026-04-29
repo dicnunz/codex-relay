@@ -19,13 +19,28 @@ Codex Mission Control is local Mac infrastructure for people who run more than o
 It creates:
 
 - a local hub at `~/Codex Mission Control`
+- a private local dashboard for missions, lanes, Relay health, and copyable commands
 - a non-destructive `missions/` symlink index to your real projects
 - shared-surface lanes for browser, GitHub, email, public social, commerce, desktop, and global writes
 - mission outboxes for handoffs
 - exact approval packet templates
 - an optional Telegram remote called **Mission Control Relay**
 
-It does not move your projects. It does not host a dashboard. It does not create another account.
+It does not move your projects. It does not run a hosted dashboard. It does not create another account.
+
+## Why It Exists
+
+The failure mode is simple: multiple Codex chats can all be useful and still wreck each other if they touch the same browser, inbox, GitHub repo, desktop, social account, or payment surface.
+
+Mission Control makes those collisions visible:
+
+```bash
+cmc claim BROWSER FLIGHT "using the browser"
+cmc claim BROWSER OTHER "also using the browser"
+# held: BROWSER
+```
+
+That is the product: projects become missions, shared surfaces get lanes, and risky actions become exact approval packets before anything leaves your Mac.
 
 ## Install
 
@@ -45,6 +60,14 @@ cd codex-mission-control
 The installer initializes Mission Control, discovers projects under `~/Developer`, `~/Projects`, `~/Documents/Codex`, and the current folder, offers to install backed-up `AGENTS.md` mission blocks, then runs local health checks.
 
 It also links `cmc` into `~/.local/bin` when possible. If that folder is not on your `PATH`, use `./cmc` from the repo.
+
+The last installer screen is the product: the local dashboard path plus the three commands that matter first:
+
+```bash
+cmc status
+cmc lanes
+cmc packet
+```
 
 Install the phone remote during setup or later:
 
@@ -68,6 +91,7 @@ Install the phone remote during setup or later:
 ./cmc release BROWSER FLIGHT
 ./cmc packet --mission APP --action "send reply" --target "email thread" --object "exact text" --proof "proof/email.png" --risk "outreach" --why "warm inbound" --stop "after one send"
 ./cmc merge
+./scripts/status_ui.sh
 ```
 
 Discovery is deliberately boring: `cmc discover` scans the standard Mac roots; `cmc discover /path/to/project` scans only that path; `cmc discover --include-defaults /extra/root` scans both. It creates symlinks in the hub and per-mission outboxes. Your real folders stay where they are.

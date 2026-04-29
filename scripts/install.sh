@@ -85,12 +85,32 @@ case "${install_relay:l}" in
     ;;
 esac
 
-printf "\nRunning doctor...\n"
-"$ROOT/scripts/doctor.sh"
+printf "\nRunning final checks...\n"
+doctor_log="$(mktemp)"
+if "$ROOT/scripts/doctor.sh" >"$doctor_log" 2>&1; then
+  printf "ok: doctor passed\n"
+else
+  cat "$doctor_log"
+  rm -f "$doctor_log"
+  exit 1
+fi
+rm -f "$doctor_log"
 
-printf "\nDone. Local commands:\n"
-printf "cmc status\ncmc doctor\ncmc lanes\ncmc projects\ncmc packet\ncmc adopt\n"
-printf "\nRelay commands after Telegram install:\n"
-printf "/mission status\n/mission lanes\n/mission projects\n/mission packet\n/mission health\n"
-printf "\nOptional Mac control surface:\n./scripts/menu_bar.sh\n"
-printf "\nLocal status page:\n./scripts/status_ui.sh\n"
+if [[ -t 1 && "${CMC_OPEN_DASHBOARD:-yes}" != "no" ]]; then
+  dashboard_path="$("$ROOT/scripts/status_ui.sh")"
+  printf "ok: opened dashboard at %s\n" "$dashboard_path"
+else
+  dashboard_path="$("$ROOT/scripts/status_ui.sh" --no-open)"
+fi
+
+printf "\nMission Control is ready.\n"
+printf "Dashboard: %s\n" "$dashboard_path"
+printf "\nUse next:\n"
+printf "  cmc status\n"
+printf "  cmc lanes\n"
+printf "  cmc packet\n"
+printf "\nTelegram after Relay install:\n"
+printf "  /mission status\n"
+printf "  /mission lanes\n"
+printf "  /mission packet\n"
+printf "  /mission health\n"

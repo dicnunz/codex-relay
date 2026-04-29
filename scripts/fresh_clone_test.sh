@@ -39,6 +39,7 @@ if ./cmc --hub "$TMP/hub" claim BROWSER OTHER "fresh clone" >/dev/null 2>&1; the
 fi
 ./cmc --hub "$TMP/hub" release BROWSER TEST >/dev/null
 ./cmc --hub "$TMP/hub" packet --mission TEST --action inspect --target repo --object readme --proof proof.txt --risk none --why demo --stop done >/dev/null
+CODEX_MISSION_CONTROL_HOME="$TMP/hub" ./scripts/status_ui.sh --no-open >/dev/null
 ./scripts/demo.sh
 if command -v swiftc >/dev/null 2>&1; then
   ./scripts/build_menu_bar.sh >/dev/null
@@ -62,5 +63,6 @@ CMC_INSTALL_RELAY=no \
 ./scripts/install.sh >/dev/null
 "$ISO_HOME/.local/bin/cmc" --version >/dev/null
 "$ISO_HOME/.local/bin/cmc" --hub "$ISO_HOME/Codex Mission Control" doctor >/dev/null
+HOME="$ISO_HOME" CODEX_MISSION_CONTROL_HOME="$ISO_HOME/Codex Mission Control" ./scripts/status_ui.sh --no-open >/dev/null
 
 printf "ok: fresh clone works without Telegram secrets\n"

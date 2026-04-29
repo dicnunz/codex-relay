@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
 cd "$ROOT"
 
 printf "Codex Mission Control local demo\n"
-printf "No Telegram token needed. This runs smoke tests and prints the intended hub + phone flow.\n\n"
+printf "No Telegram token needed. This proves the hub, lane lock, packet, and phone flow.\n\n"
 
 PYTHONPATH="$ROOT" python3 "$ROOT/scripts/smoke_test.py"
 printf "ok: local Mission Control + Relay logic\n\n"
@@ -18,6 +18,19 @@ trap 'rm -rf "$demo_hub"' EXIT
 
 printf "Mac > cmc status\n"
 "$ROOT/cmc" --hub "$demo_hub" status
+printf "\n"
+
+printf "Mac > cmc claim BROWSER OTHER \"second chat\"\n"
+if "$ROOT/cmc" --hub "$demo_hub" claim BROWSER OTHER "second chat" >/tmp/cmc-demo-double-claim.out 2>&1; then
+  printf "expected second claim to fail\n" >&2
+  exit 1
+fi
+cat /tmp/cmc-demo-double-claim.out
+rm -f /tmp/cmc-demo-double-claim.out
+printf "\n"
+
+printf "Mac > cmc packet\n"
+"$ROOT/cmc" --hub "$demo_hub" packet --mission DEMO --action "send public reply" --target "x.com thread" --object "exact reply text" --proof "proof/screenshot.png" --risk "public post" --why "user approved packet" --stop "after one reply"
 printf "\n"
 
 printf "Mac > cmc lanes\n"

@@ -19,7 +19,7 @@ Stop running Codex like loose chats. Give it a control room.
 One-line pitch:
 
 ```text
-One install gives Codex a local mission hub: project discovery, shared-surface locks, approval packets, outboxes, and an optional Telegram remote.
+One install gives Codex a local mission hub: project discovery, shared-surface locks, approval packets, a private local dashboard, outboxes, and an optional Telegram remote.
 ```
 
 ## Main Post
@@ -50,7 +50,7 @@ Keep it under 45 seconds:
 2. Run `./scripts/install.sh`.
 3. Show `cmc discover` finding an existing project.
 4. Show `cmc claim BROWSER FLIGHT "demo"` blocking a second claim.
-5. Show `cmc adopt` previewing project instructions.
+5. Show the local dashboard.
 6. Show `cmc packet`.
 7. Show Telegram `/mission status`.
 
@@ -68,6 +68,7 @@ cd codex-mission-control
 ./scripts/install.sh
 
 it sets up the local hub first
+opens a private local dashboard
 telegram is optional
 project AGENTS.md adoption is offered during install, defaults yes interactively, and backs up existing files
 ```

@@ -1,49 +1,70 @@
 # Security
 
-Codex Relay is a local remote-control bridge. Treat it like SSH into your Mac through Telegram.
+Codex Mission Control is intentionally powerful because it organizes local Codex work around your real Mac, real files, and real logged-in tools.
 
-## What Stays Local
+Treat Mission Control Relay like SSH into your Mac through Telegram.
 
-- Telegram bot token in `.env` and runtime config.
-- Thread state in `~/Library/Application Support/CodexRelay/state`.
-- Telegram image attachments in the private runtime state directory until retention pruning.
-- Mac screenshots captured by `/screenshot` in the private runtime state directory.
-- Codex work runs on your Mac through your installed Codex CLI.
+## Local State
 
-## Main Risk
+- Mission hub: `~/Codex Mission Control`
+- Relay runtime: `~/Library/Application Support/CodexRelay`
+- LaunchAgent: `~/Library/LaunchAgents/com.codexrelay.agent.plist`
+- Private config: `.env`, written with `0600` permissions
 
-Anyone who can message the allow-listed Telegram account or steal the bot token can ask Codex to act on the Mac.
+The product is local-only. There is no hosted Mission Control account, sync backend, or web dashboard.
 
-This is a remote-control surface, not a sandboxed hosted assistant. Keep the allowlist and token private.
+Project discovery does not move files. `cmc adopt` is a dry run by default; `cmc adopt --write` is the only command that writes Mission Control instruction blocks into discovered project `AGENTS.md` files. Existing `AGENTS.md` files are backed up before changes.
 
-## Defaults
+## Approval Boundary
 
-- `.env` is gitignored.
-- Runtime config is written with private file permissions.
-- Setup allow-lists one Telegram user and chat.
-- Group chats are disabled unless `CODEX_TELEGRAM_ALLOW_GROUP_CHATS=true`.
-- `/screenshot` captures the current Mac screen and sends it to the allow-listed Telegram chat.
-- `/policy` prints the operating boundary directly in Telegram.
-- The default Codex sandbox is `danger-full-access`.
-- The default approval policy is `never`.
-- The default task timeout is 600 seconds.
+Mission Control is built around a hard line:
 
-## Recommendations
+- local inspection, drafts, tests, and repo work can proceed inside the configured Codex sandbox
+- shared surfaces should use lane locks first
+- public posts, emails, DMs, account changes, payments, purchases, deletes, applications, uploads, and sensitive submissions require exact approval packets
 
-- Use a dedicated Telegram bot.
-- Do not share the bot token.
-- Keep the Mac account locked when unattended in public.
-- Keep the bot allowlist narrow.
-- Rotate the bot token with `@BotFather` if it leaks.
-- Use `./scripts/uninstall.sh` to stop the service.
+An approval packet must name the mission, action, target, exact text/change/object, evidence checked, risks, why now, proof path, and stop condition.
 
-## Operational Limits
+## Telegram Relay
 
-- Codex Relay waits for the local Codex CLI run to finish before sending the final answer.
-- Telegram typing status means the bridge is still waiting on Codex; it is not proof that Codex will succeed.
-- Long-running tasks can still time out, fail, or stop at Codex/OpenAI/macOS confirmation boundaries.
-- Public posting, account changes, payments, and anything irreversible should stay human-confirmed.
+Relay uses a dedicated Telegram bot and an allow-listed private Telegram user/chat.
 
-## Reporting
+Keep the bot token private. Do not paste `.env`, raw logs, screenshots with secrets, auth files, or private transcripts into issues.
 
-Open a GitHub issue with reproduction steps. Do not include tokens, logs with secrets, or private Codex transcripts.
+Relay cannot bypass:
+
+- logins
+- MFA
+- CAPTCHAs
+- macOS privacy prompts
+- site safety barriers
+- Codex/OpenAI limits
+- required confirmations
+
+## Shared Surfaces
+
+The default lanes are:
+
+```text
+BROWSER
+GITHUB
+EMAIL
+PUBLIC_SOCIAL
+COMMERCE
+DESKTOP
+GLOBAL_WRITE
+```
+
+Lane locks prevent accidental collisions. They are not a permission system. The user and the local Codex sandbox are still the real boundary.
+
+## Reporting Issues
+
+Include:
+
+- macOS version
+- Codex CLI version
+- `./cmc status`
+- `./scripts/doctor.sh` output with secrets removed
+- exact command that failed
+
+Do not include bot tokens, `.env`, private screenshots, raw Telegram updates, auth files, or personal data.

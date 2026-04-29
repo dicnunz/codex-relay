@@ -20,12 +20,12 @@ final class RelayMenuApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NSApp.setActivationPolicy(.accessory)
 
         if let button = statusItem.button {
-            if let image = NSImage(systemSymbolName: "paperplane.circle.fill", accessibilityDescription: "Codex Relay") {
+            if let image = NSImage(systemSymbolName: "paperplane.circle.fill", accessibilityDescription: "Mission Control Relay") {
                 button.image = image
             } else {
                 button.title = "CR"
             }
-            button.toolTip = "Codex Relay"
+            button.toolTip = "Mission Control Relay"
         }
 
         menu.delegate = self
@@ -50,7 +50,7 @@ final class RelayMenuApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.removeAllItems()
 
         let status = isRelayRunning() ? "Running" : "Not running"
-        let header = NSMenuItem(title: "Codex Relay: \(status)", action: nil, keyEquivalent: "")
+        let header = NSMenuItem(title: "Mission Control Relay: \(status)", action: nil, keyEquivalent: "")
         header.isEnabled = false
         menu.addItem(header)
         menu.addItem(NSMenuItem.separator())
@@ -151,7 +151,7 @@ final class RelayMenuApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func openGitHubRepo() {
-        if let url = URL(string: "https://github.com/dicnunz/codex-relay") {
+        if let url = URL(string: "https://github.com/dicnunz/codex-mission-control") {
             NSWorkspace.shared.open(url)
         }
     }

@@ -42,7 +42,7 @@ doc = f"""<!doctype html>
 <html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Codex Relay Status</title>
+<title>Mission Control Relay Status</title>
 <style>
   :root {{ color-scheme: dark; }}
   * {{ box-sizing: border-box; }}
@@ -123,7 +123,7 @@ doc = f"""<!doctype html>
 <main>
   <header>
     <div>
-      <div class="eyebrow">Codex Relay</div>
+      <div class="eyebrow">Mission Control Relay</div>
       <h1>Mac bridge status.</h1>
       <p>Private local status page generated from <code>./scripts/status.sh</code>.</p>
     </div>

@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import codex_relay as relay
+import mission_control
 
 CONFIGURE_SPEC = importlib.util.spec_from_file_location("configure", ROOT / "scripts" / "configure.py")
 assert CONFIGURE_SPEC and CONFIGURE_SPEC.loader
@@ -109,6 +110,79 @@ def isolated_env() -> object:
 
 
 def run_tests() -> int:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
+        hub = tmp_path / "hub"
+        project = tmp_path / "sample-app"
+        project.mkdir()
+        (project / ".git").mkdir()
+        (project / "README.md").write_text("# Sample App\n")
+        weak = tmp_path / "notes-only"
+        weak.mkdir()
+        (weak / "README.md").write_text("# Notes\n")
+        old_cwd = Path.cwd()
+        os.chdir(tmp_path)
+        try:
+            assert_true(not mission_control.likely_project(weak), "expected README-only folder to be ignored")
+            init_text = mission_control.init_hub(hub)
+            assert_true("Mission Control initialized" in init_text, "expected hub init")
+            assert_true((hub / "_ops" / "COMMAND_CENTER.md").exists(), "expected command center template")
+            assert_true((hub / "_ops" / "GPT55_OPERATING_SPEC.md").exists(), "expected GPT-5.5 operating spec")
+            discover_text = mission_control.discover_projects(hub, [str(project)], include_defaults=False)
+            assert_true("added: 1" in discover_text, "expected one discovered project")
+            missions = mission_control.load_missions(hub)
+            assert_true(len(missions) == 1, "expected one mission")
+            link = Path(missions[0]["link"])
+            assert_true(link.exists() or link.is_symlink(), "expected mission index link")
+            code, text = mission_control.claim_lane(hub, "BROWSER", "TEST", "smoke")
+            assert_true(code == 0 and "acquired" in text, "expected lane claim")
+            code, text = mission_control.claim_lane(hub, "BROWSER", "OTHER", "smoke")
+            assert_true(code == 1 and "held" in text, "expected double claim block")
+            status = mission_control.status_text(hub)
+            assert_true("missions: 1" in status, "expected status mission count")
+            assert_true("locks: 1 held" in status, "expected status lock count")
+            lock_file = hub / "_ops" / ".surface_locks" / "BROWSER" / "lock.json"
+            lock_meta = json.loads(lock_file.read_text())
+            lock_meta["created_epoch"] = time.time() - 9999
+            lock_file.write_text(json.dumps(lock_meta))
+            stale_status = mission_control.status_text(hub)
+            assert_true("1 stale" in stale_status and "[stale]" in stale_status, "expected stale lock status")
+            stale_lanes = mission_control.lanes_text(hub)
+            assert_true("BROWSER: held" in stale_lanes and "[stale]" in stale_lanes, "expected stale lane status")
+            stale_doctor = mission_control.doctor_text(hub)
+            assert_true("stale lock: BROWSER" in stale_doctor, "expected doctor stale lock detail")
+            packet = mission_control.packet_text("TEST", "post", "x.com", "hello", "proof.png", "public", "now", "stop after post")
+            assert_true("Exact action: post" in packet and "Stop condition" in packet, "expected complete packet")
+            instructions = mission_control.instructions_text(hub)
+            assert_true("GPT-5.5 Operating Overlay" in instructions, "expected optimized instructions")
+            doctor = mission_control.doctor_text(hub)
+            assert_true("ops files: ok" in doctor, "expected doctor ok")
+            adopt_preview = mission_control.adopt_agents(hub)
+            assert_true("would create" in adopt_preview, "expected dry-run adoption")
+            adopt_write = mission_control.adopt_agents(hub, write=True)
+            assert_true("wrote" in adopt_write, "expected adoption write")
+            agents_text = (project / "AGENTS.md").read_text()
+            assert_true("codex-mission-control:start" in agents_text, "expected managed agents block")
+            merge = mission_control.merge_outboxes(hub)
+            assert_true("merged outboxes: 1" in merge, "expected outbox merge")
+            assert_true("Outbox" in (hub / "_ops" / "GLOBAL_DASHBOARD.md").read_text(), "expected dashboard merge")
+            assert_true((project / "README.md").read_text() == "# Sample App\n", "expected merge not to touch mission files")
+            old_hub_env = os.environ.get("CODEX_MISSION_CONTROL_HOME")
+            os.environ["CODEX_MISSION_CONTROL_HOME"] = str(hub)
+            try:
+                assert_true("missions: 1" in relay.mission_command_text("status"), "expected relay mission status")
+                assert_true("Codex Mission Control doctor" in relay.mission_command_text("doctor"), "expected relay mission doctor")
+                assert_true("Codex Mission Control doctor" in relay.mission_command_text("health"), "expected relay mission health")
+                assert_true("BROWSER" in relay.mission_command_text("lanes"), "expected relay mission lanes")
+                assert_true("sample-app" in relay.mission_command_text("projects"), "expected relay mission projects")
+            finally:
+                if old_hub_env is None:
+                    os.environ.pop("CODEX_MISSION_CONTROL_HOME", None)
+                else:
+                    os.environ["CODEX_MISSION_CONTROL_HOME"] = old_hub_env
+        finally:
+            os.chdir(old_cwd)
+
     photo_message = {
         "message_id": 1,
         "caption": "can you see this?",
@@ -522,6 +596,39 @@ def run_tests() -> int:
         assert_true("SECRET_TOKEN_SHOULD_NOT_LEAK" not in answer, "expected stderr redaction")
         assert_true("exit 9" in answer, "expected exit code in sanitized failure")
         assert_true(stats["last_status"] == "failed", "expected failed status")
+
+        stale_resume_codex = Path(tmp) / "stale-resume-codex"
+        stale_resume_codex.write_text(
+            "#!/bin/sh\n"
+            "out=''\n"
+            "resume=0\n"
+            "for arg in \"$@\"; do\n"
+            "  if [ \"$arg\" = '--output-last-message' ]; then next_out=1; continue; fi\n"
+            "  if [ \"${next_out:-0}\" = 1 ]; then out=\"$arg\"; next_out=0; fi\n"
+            "  if [ \"$arg\" = 'resume' ]; then resume=1; fi\n"
+            "done\n"
+            "if [ \"$resume\" = 1 ]; then\n"
+            "  echo 'Error: thread/resume failed: no rollout found for thread id old-session' >&2\n"
+            "  exit 1\n"
+            "fi\n"
+            "printf 'recovered answer\\n' > \"$out\"\n"
+            "printf 'session id: 87654321-4321-4321-4321-cba987654321\\n' >&2\n"
+        )
+        stale_resume_codex.chmod(0o700)
+        os.environ["CODEX_BIN"] = str(stale_resume_codex)
+        try:
+            answer, session_id, stats = relay.run_codex(
+                "recover",
+                {"workdir": tmp, "name": "main", "session_id": "old-session"},
+            )
+        finally:
+            if old_codex_bin is None:
+                os.environ.pop("CODEX_BIN", None)
+            else:
+                os.environ["CODEX_BIN"] = old_codex_bin
+        assert_true(answer == "recovered answer", "expected stale resume recovery")
+        assert_true(session_id.endswith("cba987654321"), "expected fresh session id")
+        assert_true(stats["last_status"] == "ok", "expected recovered ok status")
 
         slow_codex = Path(tmp) / "slow-codex"
         slow_codex.write_text(

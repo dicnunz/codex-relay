@@ -24,7 +24,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>CFBundleIdentifier</key>
   <string>com.codexrelay.menu</string>
   <key>CFBundleName</key>
-  <string>Codex Relay</string>
+  <string>Mission Control Relay</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>

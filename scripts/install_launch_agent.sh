@@ -24,6 +24,10 @@ umask 077
 chmod 600 "$STATE_DIR/launchd.out" "$STATE_DIR/launchd.err"
 
 install -m 700 "$ROOT/codex_relay.py" "$RUNTIME/codex_relay.py"
+install -m 600 "$ROOT/mission_control.py" "$RUNTIME/mission_control.py"
+rm -rf "$RUNTIME/templates"
+cp -R "$ROOT/templates" "$RUNTIME/templates"
+chmod -R go-rwx "$RUNTIME/templates"
 
 python3 - <<PY
 from pathlib import Path

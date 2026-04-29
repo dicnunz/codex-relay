@@ -1,11 +1,11 @@
 name: "Install feedback"
-description: "Report the first blocker you hit while trying Codex Relay."
+description: "Report the first blocker you hit while trying Codex Mission Control."
 title: "[install feedback]: "
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for trying Codex Relay.
+        Thanks for trying Codex Mission Control.
 
         Do not paste bot tokens, `.env`, private screenshots, personal files, raw Codex transcripts, or unredacted logs.
   - type: input

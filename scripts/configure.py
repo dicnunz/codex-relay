@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Interactive Codex Relay setup."""
+"""Interactive Mission Control Relay setup."""
 
 from __future__ import annotations
 
@@ -50,6 +50,7 @@ def save_env(values: dict[str, str]) -> None:
         "CODEX_RELAY_USER_NAME",
         "CODEX_RELAY_ASSISTANT_NAME",
         "CODEX_RELAY_ASSISTANT_PERSONALITY",
+        "CODEX_MISSION_CONTROL_HOME",
         "CODEX_TELEGRAM_WORKDIR",
         "CODEX_BIN",
         "CODEX_TELEGRAM_SANDBOX",
@@ -66,7 +67,7 @@ def save_env(values: dict[str, str]) -> None:
         "CODEX_TELEGRAM_MAX_IMAGE_BYTES",
         "CODEX_TELEGRAM_IMAGE_RETENTION_DAYS",
     ]
-    lines = ["# Codex Relay private config. Do not commit this file."]
+    lines = ["# Codex Mission Control private config. Do not commit this file."]
     for key in ordered:
         if key in values:
             lines.append(f"{key}={values[key]}")
@@ -191,6 +192,7 @@ def main() -> int:
             "TELEGRAM_BOT_TOKEN": token,
             "TELEGRAM_ALLOWED_USER_ID": user_id,
             "TELEGRAM_ALLOWED_CHAT_ID": chat_id,
+            "CODEX_MISSION_CONTROL_HOME": values.get("CODEX_MISSION_CONTROL_HOME") or str(Path.home() / "Codex Mission Control"),
             "CODEX_TELEGRAM_WORKDIR": values.get("CODEX_TELEGRAM_WORKDIR") or str(Path.home()),
             "CODEX_RELAY_ASSISTANT_NAME": values.get("CODEX_RELAY_ASSISTANT_NAME") or "Codex",
             "CODEX_RELAY_ASSISTANT_PERSONALITY": values.get("CODEX_RELAY_ASSISTANT_PERSONALITY") or "",
@@ -213,7 +215,7 @@ def main() -> int:
     save_env(values)
     subprocess.run([str(ROOT / "scripts/install_launch_agent.sh")], check=True)
     print()
-    print(f"Codex Relay is running. DM @{username} /health to verify.")
+    print(f"Mission Control Relay is running. DM @{username} /mission status to verify.")
     return 0
 
 

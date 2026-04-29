@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Codex Relay: private Telegram control for local Codex on macOS."""
+"""Mission Control Relay: private Telegram control for local Codex on macOS."""
 
 from __future__ import annotations
 
@@ -21,6 +21,8 @@ import urllib.request
 import uuid
 from pathlib import Path
 from typing import Any, Callable, Optional
+
+import mission_control
 
 
 ROOT = Path(__file__).resolve().parent
@@ -633,7 +635,7 @@ def screenshot_failure_text(error: str) -> str:
         return (
             "Blocked: screenshot needs macOS Screen Recording permission for this launch path. "
             "On the Mac, open System Settings > Privacy & Security > Screen & System Audio Recording, "
-            "allow Terminal/Codex or the app that installed Codex Relay, then run ./scripts/doctor.sh. "
+            "allow Terminal/Codex or the app that installed Mission Control Relay, then run ./scripts/doctor.sh. "
             f"raw: {detail}"
         )
     return f"Blocked: screenshot failed: {detail}"
@@ -888,6 +890,14 @@ def extract_session_id(output: str) -> str:
     return match.group(1) if match else ""
 
 
+def stale_resume_error(output: str) -> bool:
+    lowered = output.lower()
+    return (
+        "thread/resume failed" in lowered
+        and "no rollout found" in lowered
+    ) or "stale rollout path" in lowered
+
+
 def child_pids(pid: int) -> list[int]:
     try:
         result = subprocess.run(
@@ -1077,6 +1087,20 @@ def run_codex(
         return finish("Canceled: job stopped before Codex replied.", session_id, "canceled")
 
     if returncode != 0:
+        combined_output = "\n".join(part for part in [stdout, stderr] if part)
+        if session_id and stale_resume_error(combined_output):
+            fresh_thread = dict(thread)
+            fresh_thread.pop("session_id", None)
+            answer, new_session_id, stats = run_codex(
+                message_text,
+                fresh_thread,
+                image_paths,
+                cancel_event,
+                process_callback,
+            )
+            if not new_session_id:
+                stats["clear_session_id"] = True
+            return answer, new_session_id, stats
         return finish(
             f"Codex failed with exit {returncode}. Run local diagnostics with ./scripts/doctor.sh.",
             session_id,
@@ -1115,9 +1139,55 @@ def command_help() -> str:
             "/capabilities - show what this remote can do",
             "/try - show good first prompts",
             "/tools - probe Codex tool access",
+            "/mission status - show Mission Control status",
+            "/mission lanes - show shared-surface lanes",
+            "/mission projects - show discovered missions",
+            "/mission packet - draft an approval packet shell",
+            "/mission health - show hub and relay health",
+            "/mission doctor - check hub health",
             "/reset - restart the current thread",
             "",
             "Normal messages and images go to the active thread.",
+        ]
+    )
+
+
+def mission_command_text(arg: str) -> str:
+    subcommand, _, rest = arg.strip().partition(" ")
+    subcommand = subcommand.lower() or "status"
+    hub = Path(os.environ.get("CODEX_MISSION_CONTROL_HOME", "~/Codex Mission Control")).expanduser()
+    if subcommand == "status":
+        return mission_control.status_text(hub)
+    if subcommand in {"doctor", "health"}:
+        return mission_control.doctor_text(hub)
+    if subcommand in {"lanes", "lane"}:
+        return mission_control.lanes_text(hub)
+    if subcommand in {"projects", "project", "missions"}:
+        return mission_control.projects_text(hub)
+    if subcommand in {"instructions", "prompt"}:
+        return mission_control.instructions_text(hub)
+    if subcommand == "packet":
+        mission = rest.strip() or "MISSION"
+        return mission_control.packet_text(
+            mission=mission,
+            action="exact action",
+            target="exact target",
+            object_text="exact text/change/object",
+            proof="proof path after execution",
+            risk="risk flags",
+            reason="why this matters now",
+            stop="stop condition",
+        )
+    return "\n".join(
+        [
+            "Mission commands:",
+            "/mission status",
+            "/mission lanes",
+            "/mission projects",
+            "/mission packet [mission]",
+            "/mission health",
+            "/mission doctor",
+            "/mission instructions",
         ]
     )
 
@@ -1208,7 +1278,7 @@ def alive_text(thread: dict[str, Any]) -> str:
     session_status = "started" if thread.get("session_id") else "new"
     return "\n".join(
         [
-            "Codex Relay is live.",
+            "Mission Control Relay is live.",
             f"uptime: {duration_text(time.time() - STARTED_AT)}",
             f"thread: {thread.get('name', DEFAULT_THREAD)} ({session_status})",
             f"folder: {thread.get('workdir', default_workdir())}",
@@ -1216,8 +1286,8 @@ def alive_text(thread: dict[str, Any]) -> str:
             f"reasoning: {env_choice('CODEX_TELEGRAM_REASONING_EFFORT', DEFAULT_REASONING_EFFORT, REASONING_EFFORTS)}",
             f"speed: {codex_speed_default()}",
             f"style: {thread.get('reply_style') or reply_style_default()}",
-            "remote: Telegram -> LaunchAgent -> Codex CLI -> this Mac",
-            "next: send /tools, /try, or a normal task.",
+            "remote: Telegram -> LaunchAgent -> Codex CLI -> Mission Control",
+            "next: send /mission status, /tools, /try, or a normal task.",
         ]
     )
 
@@ -1412,6 +1482,8 @@ def run_job_worker(
                 thread = ensure_thread(data, chat_id, thread_name)
                 if session_id:
                     thread["session_id"] = session_id
+                elif stats.get("clear_session_id"):
+                    thread.pop("session_id", None)
                 record_run_stats(thread, stats)
                 thread["updated_at"] = now_iso()
                 write_threads(threads_path, data)
@@ -1496,9 +1568,10 @@ def start_background_job(
 def capabilities_text() -> str:
     return "\n".join(
         [
-            "Codex Relay can:",
-            "- run Codex on this Mac from Telegram",
+            "Mission Control Relay can:",
+            "- run Codex Mission Control from Telegram",
             "- keep named Codex threads with separate folders",
+            "- show mission status, lanes, projects, and approval packet shells",
             "- inspect and edit local repos/files",
             "- run tests, scripts, git, and shell commands",
             "- read Telegram photo and image-document attachments",
@@ -1517,6 +1590,7 @@ def policy_text() -> str:
     return "\n".join(
         [
             "Policy:",
+            "- Mission Control coordinates projects, lanes, outboxes, and approval gates locally on this Mac",
             "- allowed: local repo/file/test/shell work inside your configured Codex sandbox",
             "- allowed: Telegram images, /screenshot, named threads, local status, and automations inspection",
             "- stops before: public posts, messages to people, account/security changes, payments, purchases, deletes, or medical/legal/financial submissions",
@@ -1546,10 +1620,10 @@ def update_text() -> str:
     return "\n".join(
         [
             "Update on the Mac:",
-            "cd path/to/codex-relay",
+            "cd path/to/codex-mission-control",
             "./scripts/update.sh",
             "",
-            "That pulls latest, reinstalls the LaunchAgent, and runs doctor.",
+            "That pulls latest, refreshes Mission Control Relay, and runs doctor.",
         ]
     )
 
@@ -1614,6 +1688,9 @@ def handle_message(
         return
     if command in {"/help", "/start"}:
         api.send_message(chat_id, command_help(), message_id)
+        return
+    if command == "/mission":
+        api.send_message(chat_id, mission_command_text(arg), message_id)
         return
 
     with THREADS_LOCK:
@@ -1877,6 +1954,7 @@ def check_config() -> int:
     print(f"allowed_user_ids={len(allowed_users)}")
     print(f"allowed_chat_ids={len(allowed_chats)}")
     print(f"workdir={workdir} exists={workdir.exists()}")
+    print(f"mission_control_home={os.environ.get('CODEX_MISSION_CONTROL_HOME', str(Path.home() / 'Codex Mission Control'))}")
     print(f"codex={shutil.which(codex_bin) or 'missing'}")
     print(f"sandbox={os.environ.get('CODEX_TELEGRAM_SANDBOX', 'danger-full-access')}")
     print(f"model={os.environ.get('CODEX_TELEGRAM_MODEL', DEFAULT_MODEL)}")
@@ -1920,7 +1998,7 @@ def main() -> int:
     signal.signal(signal.SIGTERM, request_shutdown)
     signal.signal(signal.SIGINT, request_shutdown)
 
-    print("Codex Relay running.")
+    print("Mission Control Relay running.")
     if not allowed_users and not allowed_chats:
         print("Enrollment mode: messages will only return Telegram ids.")
 

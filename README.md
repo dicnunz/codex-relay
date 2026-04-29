@@ -1,38 +1,31 @@
-# Codex Relay
+# Codex Mission Control
 
-[![ci](https://github.com/dicnunz/codex-relay/actions/workflows/ci.yml/badge.svg)](https://github.com/dicnunz/codex-relay/actions/workflows/ci.yml)
+[![ci](https://github.com/dicnunz/codex-mission-control/actions/workflows/ci.yml/badge.svg)](https://github.com/dicnunz/codex-mission-control/actions/workflows/ci.yml)
 
-**Text your Mac. Codex works.**
+**Stop running Codex like loose chats. Give it a control room.**
 
-A Telegram DM becomes a local Codex run on your Mac. The phone is the remote. The Mac keeps the files, tools, apps, sandbox, and account context. When Codex finishes, the answer comes back to Telegram.
+Give Codex a mission control room for your Mac. It finds your projects, creates mission workspaces, locks shared surfaces, keeps approval gates, and lets you text it from your phone.
 
-No web dashboard. No hosted relay account. No screen mirror.
-
-<p align="center">
-  <a href="assets/codex-relay-demo.mp4">
-    <img src="assets/codex-relay-demo-poster.png" alt="Codex Relay demo poster" width="100%">
-  </a>
-</p>
-
-**Watch first:** [52-second demo](assets/codex-relay-demo.mp4) · [Install](#install) · [Try it and report the first blocker](docs/builder-feedback.md) · [Security](#security)
-
-> Unofficial project. Not affiliated with OpenAI or Telegram.
+Unofficial project. Not affiliated with OpenAI or Telegram.
 
 ## The Product
 
 ```text
-Telegram DM -> LaunchAgent -> Codex CLI -> your Mac -> Telegram reply
+existing projects -> Mission Control hub -> lanes + outboxes + approvals -> optional Telegram remote
 ```
 
-Use it when a task belongs on your Mac but you are not at the keyboard:
+Codex Mission Control is local Mac infrastructure for people who run more than one Codex thread or project at once.
 
-- ask Codex to inspect a repo while you are away
-- send a screenshot and ask what changed
-- run a small doc, test, or fix pass in a known folder
-- request the current Mac screen with `/screenshot`
-- check jobs, health, policy, and recent run receipts from your phone
+It creates:
 
-Codex Relay does not mirror the visible Codex desktop chat UI. It calls your local Codex CLI with your configured model, workdir, sandbox, approval mode, and optional image attachment.
+- a local hub at `~/Codex Mission Control`
+- a non-destructive `missions/` symlink index to your real projects
+- shared-surface lanes for browser, GitHub, email, public social, commerce, desktop, and global writes
+- mission outboxes for handoffs
+- exact approval packet templates
+- an optional Telegram remote called **Mission Control Relay**
+
+It does not move your projects. It does not host a dashboard. It does not create another account.
 
 ## Install
 
@@ -40,138 +33,110 @@ Requirements:
 
 - macOS
 - Codex Mac app installed and signed in
-- Telegram account
-- dedicated Telegram bot token from `@BotFather`
 - Python 3 available as `python3`
+- optional: Telegram bot token from `@BotFather` if you want phone control
 
 ```bash
-git clone https://github.com/dicnunz/codex-relay.git
-cd codex-relay
+git clone https://github.com/dicnunz/codex-mission-control.git
+cd codex-mission-control
 ./scripts/install.sh
 ```
 
-The installer verifies the bot token, gives you a one-time `/start` code, allow-lists your private Telegram DM, installs the LaunchAgent, and runs `doctor.sh`.
+The installer initializes Mission Control, discovers projects under `~/Developer`, `~/Projects`, `~/Documents/Codex`, and the current folder, offers to install backed-up `AGENTS.md` mission blocks, then runs local health checks.
 
-Then DM your bot:
+It also links `cmc` into `~/.local/bin` when possible. If that folder is not on your `PATH`, use `./cmc` from the repo.
+
+Install the phone remote during setup or later:
+
+```bash
+./cmc relay install
+```
+
+## Local Commands
+
+```bash
+./cmc init
+./cmc discover
+./cmc status
+./cmc doctor
+./cmc lanes
+./cmc projects
+./cmc instructions
+./cmc adopt
+./cmc adopt --write
+./cmc claim BROWSER FLIGHT "using the browser"
+./cmc release BROWSER FLIGHT
+./cmc packet --mission APP --action "send reply" --target "email thread" --object "exact text" --proof "proof/email.png" --risk "outreach" --why "warm inbound" --stop "after one send"
+./cmc merge
+```
+
+Discovery is deliberately boring: `cmc discover` scans the standard Mac roots; `cmc discover /path/to/project` scans only that path; `cmc discover --include-defaults /extra/root` scans both. It creates symlinks in the hub and per-mission outboxes. Your real folders stay where they are.
+
+`cmc adopt` previews the `AGENTS.md` blocks Mission Control would add to discovered projects. `cmc adopt --write` applies them with backups when an `AGENTS.md` already exists. The interactive installer defaults to applying them because that is what makes the hub useful immediately; non-interactive installs skip unless `CMC_ADOPT_AGENTS=yes` is set.
+
+The generated instructions follow OpenAI's prompt guidance shape: clear role and objective, explicit instructions, compact reasoning steps, tool boundaries, validation, and a short output contract.
+
+## Relay Commands
+
+Mission Control Relay keeps the old Telegram remote idea, now pointed at the hub:
 
 ```text
+/mission status
+/mission lanes
+/mission projects
+/mission packet
+/mission health
+/mission doctor
+/mission instructions
 /alive
 /health
 /policy
 /screenshot
 /tools
-/latency
-send a screenshot and ask what changed
+/jobs
+/cd path
 ```
 
-Optional Mac control surface:
+Normal Telegram messages still go to local Codex through your Mac. Image captions still attach the image to Codex. Relay remains allow-listed to your private Telegram user/chat.
 
-```bash
-./scripts/menu_bar.sh
-```
-
-That opens a small native menu-bar controller for status, doctor, restart, update, and copying first-run Telegram commands.
-
-## Demo Without Secrets
-
-Run the no-token path from a clean checkout:
+## Demo
 
 ```bash
 ./scripts/demo.sh
-./scripts/fresh_clone_test.sh
 ```
 
-The demo proves the repo can run its smoke path without a Telegram token, local `.env`, or private runtime state. Regenerate the sanitized launch video with:
+The demo proves the no-token path: initialize a temp hub, discover this repo as a mission, claim a browser lane, show status, run smoke tests, and print the phone flow.
+
+Fresh clone check:
 
 ```bash
-./scripts/record_demo.sh
+./scripts/fresh_clone_test.sh
 ```
-
-<p align="center">
-  <img src="assets/demo-transcript.svg" alt="Codex Relay Telegram transcript" width="760">
-</p>
-
-## What You Can Send
-
-```text
-/alive        live route, model, folder, uptime
-/status       current thread and runtime config
-/health       fast local bridge checks, no Codex run
-/policy      safety boundary and allowed surface
-/screenshot   send the Mac screen back to Telegram
-/latency      last Codex run timing and timeout
-/jobs         running jobs and last run
-/cancel id    stop a running job
-/history      recent run receipts, no prompt/response logs
-/automations  inspect Codex automations through Codex
-/tools        quick Codex tool probe
-/try          useful first prompts
-/new name     new Codex thread
-/use name     switch threads
-/list         list threads
-/where        show active folder
-/cd path      set active folder
-/home         set folder to ~
-/brief        terse replies for this thread
-/verbose      detailed replies for this thread
-/update       show local update command
-/reset        clear the current Codex session
-/ping         bridge check
-```
-
-Normal messages go to the active thread. Captions on Telegram images become the prompt; image files are saved privately and attached to Codex.
-
-## Try It
-
-I am looking for 10 real Mac/Codex users to try the first install path and report the first blocker.
-
-Open the feedback form after a real attempt:
-
-```text
-https://github.com/dicnunz/codex-relay/issues/new?template=install-feedback.yml
-```
-
-The ask is simple: install it, run `/alive`, `/health`, `/policy`, `/screenshot`, try one safe local task, and report what was confusing or broken. Do not paste bot tokens, `.env`, private screenshots, personal files, raw Codex transcripts, or unredacted logs.
-
-Normal messages use `CODEX_TELEGRAM_MODEL`, `CODEX_TELEGRAM_REASONING_EFFORT`, and `CODEX_TELEGRAM_SPEED` from `.env`. The sample config defaults to `gpt-5.5`, `high`, and `standard`; change those only if you intentionally want a different reasoning profile.
-
-`/status` shows the active model settings, last run status, and latency after Codex replies.
 
 ## What It Is Not
 
 | It is | It is not |
 | --- | --- |
-| A private Telegram remote for local Codex on your Mac | An official OpenAI app |
-| A macOS LaunchAgent that calls the Codex app CLI | A hosted agent platform |
-| A way to send tasks, images, repo work, and local Mac requests from your phone | A VNC screen mirror |
-| A small local bridge with allow-listed Telegram access | A bypass for logins, MFA, limits, or confirmations |
+| Local traffic control for Codex work on your Mac | An official OpenAI product |
+| A mission hub over your existing project folders | A hosted agent platform |
+| A lane and approval system for shared surfaces | A way to bypass logins, MFA, limits, or confirmations |
+| A Telegram remote for the hub | A VNC screen mirror |
 
 ## Verify
 
 ```bash
-python3 -m py_compile codex_relay.py scripts/configure.py
-python3 scripts/smoke_test.py
+python3 -m py_compile mission_control.py codex_relay.py scripts/configure.py
+PYTHONPATH=. python3 scripts/smoke_test.py
+./cmc doctor
 ./scripts/demo.sh
 ./scripts/fresh_clone_test.sh
-```
-
-After real install:
-
-```bash
 ./scripts/doctor.sh
-./scripts/status.sh
-./scripts/status_ui.sh
 ```
-
-Use `doctor.sh` as the pass/fail install check. Use `status.sh` for diagnostics. `doctor.sh` checks the Mac environment, Codex CLI, local config, LaunchAgent, runtime copy, screenshot permission, Python syntax, and smoke tests.
-
-If `/screenshot` says macOS could not create an image from the display, grant Screen Recording access on the Mac: System Settings > Privacy & Security > Screen & System Audio Recording. Allow Terminal/Codex or the app that installed Codex Relay, then rerun `./scripts/doctor.sh`.
-
-`status_ui.sh` opens a private local status page generated from `status.sh`. `menu_bar.sh` builds and opens the optional native macOS menu-bar controller. `fresh_clone_test.sh` clones the repo into a temp folder and proves the no-secrets demo path works from a clean checkout.
 
 Runtime files:
 
 ```text
+~/Codex Mission Control
 ~/Library/Application Support/CodexRelay
 ~/Library/LaunchAgents/com.codexrelay.agent.plist
 ```
@@ -182,37 +147,10 @@ Update later with:
 ./scripts/update.sh
 ```
 
-Stop the LaunchAgent with:
+Stop Relay with:
 
 ```bash
 ./scripts/uninstall.sh
 ```
 
-Runtime files remain under `~/Library/Application Support/CodexRelay` unless you remove them separately.
-
-## Security
-
-Codex Relay is intentionally powerful. If you expose your Telegram bot, you are exposing a path to Codex on your Mac.
-
-- Use a dedicated bot and keep the token private.
-- `.env` is private and gitignored.
-- Runtime config is copied with `0600` permissions.
-- Only the allow-listed Telegram user/chat can run Codex.
-- Group chats are disabled unless `CODEX_TELEGRAM_ALLOW_GROUP_CHATS=true`.
-- Images are stored in the private runtime state directory and pruned by retention settings.
-- `/policy` shows the same boundary inside Telegram.
-- High-risk actions can still hit Codex, OpenAI, macOS, browser, or site confirmations.
-- It cannot bypass logins, MFA, macOS privacy prompts, site safety barriers, account limits, or mandatory confirmations.
-
-Use it only with a Telegram account and Mac you trust.
-
-## Honest Limits
-
-- It uses your normal Codex/OpenAI account limits.
-- Telegram and Codex/OpenAI are still in the path; this only avoids adding another hosted relay server.
-- It waits for Codex to finish before sending the final answer.
-- A `/ping` is immediate; real repo, browser, image, test-running, and desktop/app-control tasks can take tens of seconds or minutes.
-- Computer Use and plugin behavior depend on what your local Codex runtime exposes.
-- The bot is only as capable as the Codex install on that Mac.
-
-Codex is already useful on a Mac. Codex Relay makes it reachable from the chat app already on your phone.
+Mission Control is the hub. Relay is the remote.

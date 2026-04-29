@@ -15,6 +15,13 @@ jobs:
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile $(git ls-files '*.py')
       - name: Smoke tests
         run: PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$PWD" python3 scripts/smoke_test.py
+      - name: Mission Control CLI
+        run: |
+          HUB="$RUNNER_TEMP/cmc-hub"
+          ./cmc --hub "$HUB" init
+          ./cmc --hub "$HUB" discover "$PWD"
+          ./cmc --hub "$HUB" doctor
+          ./cmc --hub "$HUB" adopt
       - name: System Python smoke tests
         run: PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$PWD" /usr/bin/python3 scripts/smoke_test.py
       - name: Local demo
@@ -24,13 +31,13 @@ jobs:
       - name: Generated demo assets
         run: |
           brew install ffmpeg
-          cp assets/codex-relay-demo.mp4 "$RUNNER_TEMP/codex-relay-demo-before.mp4"
+          cp assets/codex-mission-control-demo.mp4 "$RUNNER_TEMP/codex-mission-control-demo-before.mp4"
           ./scripts/record_demo.sh
-          git diff --exit-code -- assets/social-card.svg assets/social-card.png assets/demo-transcript.svg assets/codex-relay-demo-poster.png
+          git diff --exit-code -- assets/social-card.svg assets/social-card.png assets/demo-transcript.svg assets/codex-mission-control-demo-poster.png
           test "$(sips -g pixelWidth -g pixelHeight assets/social-card.png | awk '/pixelWidth/ {w=$2} /pixelHeight/ {h=$2} END {print w "x" h}')" = "1280x640"
-          test "$(ffprobe -v error -show_entries stream=width,height -of csv=p=0:s=x assets/codex-relay-demo.mp4 | head -n1)" = "1280x720"
-          test "$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 assets/codex-relay-demo.mp4)" = "52.000000"
-          ffmpeg -i "$RUNNER_TEMP/codex-relay-demo-before.mp4" -i assets/codex-relay-demo.mp4 -lavfi "[0:v][1:v]ssim" -f null - 2> "$RUNNER_TEMP/demo-ssim.log"
+          test "$(ffprobe -v error -show_entries stream=width,height -of csv=p=0:s=x assets/codex-mission-control-demo.mp4 | head -n1)" = "1280x720"
+          test "$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 assets/codex-mission-control-demo.mp4)" = "44.000000"
+          ffmpeg -i "$RUNNER_TEMP/codex-mission-control-demo-before.mp4" -i assets/codex-mission-control-demo.mp4 -lavfi "[0:v][1:v]ssim" -f null - 2> "$RUNNER_TEMP/demo-ssim.log"
           python3 -c 'import os, pathlib, re; text = pathlib.Path(os.environ["RUNNER_TEMP"], "demo-ssim.log").read_text(); values = [float(match) for match in re.findall(r"All:([0-9.]+)", text)]; assert values and min(values) >= 0.99, text'
       - name: Fresh clone path
         run: PYTHONDONTWRITEBYTECODE=1 ./scripts/fresh_clone_test.sh

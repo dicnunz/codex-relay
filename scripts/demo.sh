@@ -4,15 +4,30 @@ set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
 cd "$ROOT"
 
-printf "Codex Relay local demo\n"
-printf "No Telegram token needed. This runs smoke tests and prints the intended phone flow.\n\n"
+printf "Codex Mission Control local demo\n"
+printf "No Telegram token needed. This runs smoke tests and prints the intended hub + phone flow.\n\n"
 
 PYTHONPATH="$ROOT" python3 "$ROOT/scripts/smoke_test.py"
-printf "ok: local relay logic\n\n"
+printf "ok: local Mission Control + Relay logic\n\n"
 
-printf "Telegram > /alive\n"
-printf "Codex Relay is live.\n"
-printf "remote: Telegram -> LaunchAgent -> Codex CLI -> this Mac\n\n"
+demo_hub="$(mktemp -d)"
+trap 'rm -rf "$demo_hub"' EXIT
+"$ROOT/cmc" --hub "$demo_hub" init >/dev/null
+"$ROOT/cmc" --hub "$demo_hub" discover "$ROOT" >/dev/null
+"$ROOT/cmc" --hub "$demo_hub" claim BROWSER DEMO "show lane locking" >/dev/null
+
+printf "Mac > cmc status\n"
+"$ROOT/cmc" --hub "$demo_hub" status
+printf "\n"
+
+printf "Mac > cmc lanes\n"
+"$ROOT/cmc" --hub "$demo_hub" lanes
+printf "\n"
+
+"$ROOT/cmc" --hub "$demo_hub" release BROWSER DEMO >/dev/null
+
+printf "Telegram > /mission status\n"
+printf "Codex Mission Control status comes back from the Mac.\n\n"
 
 printf "Telegram > /policy\n"
 printf "Allowed local Mac work; stops before public, account, payment, delete, or confirmation-sensitive actions.\n\n"

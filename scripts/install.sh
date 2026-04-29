@@ -2,15 +2,17 @@
 set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
 
-printf "Codex Relay installer\n"
+printf "Codex Mission Control installer\n"
 printf "1. preflight local Mac requirements\n"
-printf "2. verify Codex + Telegram bot token\n"
-printf "3. allow-list your private Telegram DM\n"
-printf "4. install the macOS LaunchAgent\n"
-printf "5. run local health checks\n\n"
+printf "2. initialize the local Mission Control hub\n"
+printf "3. discover existing projects as missions\n"
+printf "4. expose the cmc command in ~/.local/bin when possible\n"
+printf "5. optionally install project AGENTS.md blocks\n"
+printf "6. optionally install Mission Control Relay for Telegram\n"
+printf "7. run local health checks\n\n"
 
 [[ "$(uname -s)" == "Darwin" ]] || {
-  printf "Codex Relay is macOS-first because it installs a LaunchAgent.\n" >&2
+  printf "Codex Mission Control is macOS-first in this release.\n" >&2
   exit 1
 }
 
@@ -30,11 +32,65 @@ fi
 
 printf "ok: macOS + python3 preflight\n\n"
 
-python3 "$ROOT/scripts/configure.py"
+printf "Initializing Mission Control...\n"
+"$ROOT/cmc" init
+printf "\nDiscovering projects...\n"
+"$ROOT/cmc" discover
+printf "\nMission Control status...\n"
+"$ROOT/cmc" status
+
+LOCAL_BIN="$HOME/.local/bin"
+if [[ -d "$LOCAL_BIN" || -w "$HOME" ]]; then
+  mkdir -p "$LOCAL_BIN"
+  ln -sf "$ROOT/cmc" "$LOCAL_BIN/cmc"
+  printf "\nok: linked cmc at %s\n" "$LOCAL_BIN/cmc"
+  case ":$PATH:" in
+    *":$LOCAL_BIN:"*) ;;
+    *) printf "note: add %s to PATH to run cmc without ./cmc\n" "$LOCAL_BIN" ;;
+  esac
+fi
+
+adopt_agents="${CMC_ADOPT_AGENTS:-}"
+if [[ -z "$adopt_agents" && -t 0 ]]; then
+  printf "\nInstall Mission Control AGENTS.md blocks into discovered projects? [Y/n] "
+  read -r adopt_agents
+  [[ -n "$adopt_agents" ]] || adopt_agents="yes"
+elif [[ -z "$adopt_agents" ]]; then
+  adopt_agents="no"
+fi
+
+case "${adopt_agents:l}" in
+  y|yes|1|true)
+    "$ROOT/cmc" adopt --write
+    ;;
+  *)
+    printf "\nProject AGENTS.md adoption skipped. Preview later with:\n"
+    printf "./cmc adopt\n"
+    ;;
+esac
+
+install_relay="${CMC_INSTALL_RELAY:-}"
+if [[ -z "$install_relay" && -t 0 ]]; then
+  printf "\nInstall Mission Control Relay for Telegram now? [y/N] "
+  read -r install_relay
+fi
+
+case "${install_relay:l}" in
+  y|yes|1|true)
+    python3 "$ROOT/scripts/configure.py"
+    ;;
+  *)
+    printf "\nRelay skipped. Install later with:\n"
+    printf "./cmc relay install\n"
+    ;;
+esac
+
 printf "\nRunning doctor...\n"
 "$ROOT/scripts/doctor.sh"
 
-printf "\nDone. DM your bot:\n"
-printf "/alive\n/health\n/policy\n/screenshot\n/tools\n/latency\n"
+printf "\nDone. Local commands:\n"
+printf "cmc status\ncmc doctor\ncmc lanes\ncmc projects\ncmc packet\ncmc adopt\n"
+printf "\nRelay commands after Telegram install:\n"
+printf "/mission status\n/mission lanes\n/mission projects\n/mission packet\n/mission health\n"
 printf "\nOptional Mac control surface:\n./scripts/menu_bar.sh\n"
 printf "\nLocal status page:\n./scripts/status_ui.sh\n"

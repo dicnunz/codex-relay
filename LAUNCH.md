@@ -1,121 +1,115 @@
 # Launch
 
-Use this as the canonical public copy. Keep claims plain: unofficial, local-first, and no extra hosted relay server.
+Main link:
+
+```text
+https://github.com/dicnunz/codex-mission-control#readme
+```
+
+## Positioning
+
+Codex Mission Control is the local control room for running Codex across real projects.
+
+Tagline:
+
+```text
+Stop running Codex like loose chats. Give it a control room.
+```
+
+One-line pitch:
+
+```text
+One install gives Codex a local mission hub: project discovery, shared-surface locks, approval packets, outboxes, and an optional Telegram remote.
+```
 
 ## Main Post
 
 ```text
-I built Codex Relay.
+i kept running a bunch of codex chats at once and they started stepping on each other
 
-I can text my Mac from Telegram.
+two would try to use the browser or same account surface at the same time, or one would stale-read another's state
 
-I send: "make this repo launch-ready without pushing."
-My Mac runs local Codex, does the work, and replies when it finishes.
+so i turned the setup into a product:
 
-Telegram DM -> LaunchAgent -> Codex CLI -> Mac -> Telegram reply.
+Codex Mission Control
 
-No VNC. No extra hosted relay server.
+it finds your projects, creates mission workspaces, locks shared surfaces, keeps approval packets, and lets you text the whole thing from Telegram
 
-https://github.com/dicnunz/codex-relay#readme
+local-only, mac-first, no hosted account
+
+github.com/dicnunz/codex-mission-control
 ```
 
-Attach: `assets/codex-relay-demo.mp4`
+Attach the clearest demo asset available. Prefer real terminal + Telegram footage over generated visuals.
 
-## Install Reply
+## Demo Script
 
-```text
+Keep it under 45 seconds:
+
+1. Fresh clone.
+2. Run `./scripts/install.sh`.
+3. Show `cmc discover` finding an existing project.
+4. Show `cmc claim BROWSER FLIGHT "demo"` blocking a second claim.
+5. Show `cmc adopt` previewing project instructions.
+6. Show `cmc packet`.
+7. Show Telegram `/mission status`.
+
+No theory. No architecture diagram as the main proof.
+
+## Replies
+
 Install:
 
-git clone https://github.com/dicnunz/codex-relay.git
-cd codex-relay
+```text
+install is just:
+
+git clone https://github.com/dicnunz/codex-mission-control.git
+cd codex-mission-control
 ./scripts/install.sh
 
-Then DM your bot:
-/alive
-/health
-/policy
-/screenshot
-/tools
-/latency
-/jobs
-/automations
-send a screenshot and ask what changed
-
-Unofficial. Local-first. Uses your normal Codex/OpenAI account.
+it sets up the local hub first
+telegram is optional
+project AGENTS.md adoption is offered during install, defaults yes interactively, and backs up existing files
 ```
 
-## Short Reply
+Why:
 
 ```text
-It is a small Mac relay: Telegram DM in, local LaunchAgent runs Codex CLI, Telegram reply out. It does not host your tasks or pretend to be the official Codex app UI.
+the problem is not "agents need memory"
+
+the problem is shared surfaces
+
+browser, email, github, desktop, payments, social accounts
+
+if multiple codex runs can touch them, they need traffic control
 ```
 
-## Latency Reply
+Relay:
 
 ```text
-Same latency as a local Codex run, plus Telegram. Bridge/status commands are quick; real repo, browser, image, and tool tasks usually take tens of seconds or more.
+Mission Control Relay is the phone remote inside Mission Control
+
+Telegram -> LaunchAgent -> Codex CLI -> Mission Control hub
+
+same local Mac, bigger operating system around it
 ```
 
-## VNC/PWA Reply
+Safety:
 
 ```text
-Yeah, VNC/PWA/app-server can work.
+it is local-only and intentionally boring
 
-I wanted the smaller shape: text the task, let the Mac run local Codex, get the final reply back.
+symlink index, markdown ops files, lane locks, approval packets, launchagent relay
 
-No tiny desktop. No hosted relay to maintain.
+no hosted account
+no bypassing logins / MFA / confirmations
 ```
 
-## Safety Reply
+## Do Not Claim
 
-```text
-The important boundary is the allowlist plus `/policy`. Only the configured Telegram user/chat can call Codex, the bot token/config stay local, and the bot says where it stops before public, account, payment, delete, or confirmation-sensitive actions.
-```
-
-## Casual iOS Reply
-
-```text
-I wanted this too, so I made a local version:
-
-Telegram DM -> LaunchAgent -> Codex CLI on your Mac -> Telegram reply.
-
-Not official, not VNC, not hosted. Just a small remote for the Mac you already use.
-
-github.com/dicnunz/codex-relay#readme
-```
-
-## Promo Captions
-
-```text
-I made the missing phone remote for Codex on my Mac.
-```
-
-```text
-The whole thing is just this small local loop.
-```
-
-```text
-I did not want a tiny desktop on my phone. I wanted task-level control.
-```
-
-```text
-Install is basically clone, run, DM your bot.
-```
-
-```text
-This is for the "my Mac is on my desk and I'm not" workflow.
-```
-
-```text
-The distinction matters.
-```
-
-## Checklist
-
-- Use the generated video only if you label it as an explainer. For launch, prefer real sanitized Telegram footage showing one repo task from prompt to final reply.
-- Keep the post plain. No "AGI", "always-on agent", "instant", or fake autonomy language.
-- Reply with install commands.
-- Keep the latency reply nearby.
-- Say plainly that it is unofficial and local-first.
-- Do not imply OpenAI affiliation.
-- Stop before every public X submit action and ask final confirmation.
+- official OpenAI product
+- zero setup
+- hosted agent platform
+- unlimited model usage
+- bypasses confirmations, logins, MFA, CAPTCHAs, macOS privacy, or account limits
+- replaces VNC or remote desktop

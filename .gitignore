@@ -2,7 +2,9 @@
 .DS_Store
 .codex-relay-state/
 .telegram-codex-state/
+/_ops/
 telegram-token-crop*.png
+AGENTS.md.cmc-backup-*
 LAUNCH_POSTS.md
 assets/launch-proof/
 __pycache__/

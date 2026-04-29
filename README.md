@@ -131,6 +131,7 @@ PYTHONPATH=. python3 scripts/smoke_test.py
 ./scripts/demo.sh
 ./scripts/fresh_clone_test.sh
 ./scripts/doctor.sh
+./scripts/qa.sh
 ```
 
 Runtime files:

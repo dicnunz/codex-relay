@@ -44,4 +44,15 @@ if command -v swiftc >/dev/null 2>&1; then
   ./scripts/build_menu_bar.sh >/dev/null
 fi
 
+ISO_HOME="$TMP/home"
+mkdir -p "$ISO_HOME"
+HOME="$ISO_HOME" \
+CODEX_RELAY_LABEL="com.codexrelay.fresh.$RANDOM" \
+CODEX_MISSION_CONTROL_HOME="$ISO_HOME/Codex Mission Control" \
+CMC_ADOPT_AGENTS=yes \
+CMC_INSTALL_RELAY=no \
+./scripts/install.sh >/dev/null
+"$ISO_HOME/.local/bin/cmc" --version >/dev/null
+"$ISO_HOME/.local/bin/cmc" --hub "$ISO_HOME/Codex Mission Control" doctor >/dev/null
+
 printf "ok: fresh clone works without Telegram secrets\n"

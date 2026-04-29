@@ -28,6 +28,10 @@ body:
       label: "Commands tried"
       options:
         - label: "./scripts/install.sh"
+        - label: "cmc status"
+        - label: "cmc doctor"
+        - label: "/mission status"
+        - label: "/mission health"
         - label: "/alive"
         - label: "/health"
         - label: "/policy"

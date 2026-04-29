@@ -41,3 +41,5 @@ jobs:
           python3 -c 'import os, pathlib, re; text = pathlib.Path(os.environ["RUNNER_TEMP"], "demo-ssim.log").read_text(); values = [float(match) for match in re.findall(r"All:([0-9.]+)", text)]; assert values and min(values) >= 0.99, text'
       - name: Fresh clone path
         run: PYTHONDONTWRITEBYTECODE=1 ./scripts/fresh_clone_test.sh
+      - name: Deep QA
+        run: PYTHONDONTWRITEBYTECODE=1 ./scripts/qa.sh

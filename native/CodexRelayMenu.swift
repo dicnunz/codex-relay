@@ -141,7 +141,7 @@ final class RelayMenuApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func copyTelegramCommands() {
-        let text = "/alive\n/health\n/screenshot\n/tools\n/latency"
+        let text = "/mission status\n/mission lanes\n/mission projects\n/mission packet\n/mission health\n/alive\n/health\n/screenshot\n/tools\n/latency"
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
     }

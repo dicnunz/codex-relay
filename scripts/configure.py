@@ -83,8 +83,15 @@ def telegram_call(token: str, method: str, params: Optional[dict[str, str]] = No
         data=data,
         method="POST",
     )
-    with urllib.request.urlopen(request, timeout=20) as response:
-        payload = json.loads(response.read().decode())
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:
+            payload = json.loads(response.read().decode())
+    except urllib.error.HTTPError:
+        raise
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"Telegram request failed: {exc.reason}") from exc
+    except TimeoutError as exc:
+        raise RuntimeError("Telegram request timed out") from exc
     if not payload.get("ok"):
         raise RuntimeError(str(payload))
     return payload
@@ -149,6 +156,8 @@ def wait_for_start(
         offset = latest_update_offset(token)
     except urllib.error.HTTPError as exc:
         raise SystemExit(f"Telegram rejected the token: HTTP {exc.code}") from exc
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from exc
     print("Authorize only your private Telegram DM.")
     if deep_link:
         print(f"Open {deep_link}")
@@ -163,6 +172,8 @@ def wait_for_start(
             updates = telegram_call(token, "getUpdates", params).get("result", [])
         except urllib.error.HTTPError as exc:
             raise SystemExit(f"Telegram rejected the token: HTTP {exc.code}") from exc
+        except RuntimeError as exc:
+            raise SystemExit(str(exc)) from exc
         for update in updates:
             offset = int(update["update_id"]) + 1
             match = enrollment_match(update, nonce)
@@ -180,6 +191,8 @@ def main() -> int:
         bot = telegram_call(token, "getMe")["result"]
     except urllib.error.HTTPError as exc:
         raise SystemExit(f"Telegram rejected the token: HTTP {exc.code}") from exc
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from exc
     username = bot.get("username") or ""
     user_id, chat_id = wait_for_start(
         token,

@@ -92,9 +92,9 @@ dashboard_path="$(cat "$tmp/dashboard.out")"
 test -s "$dashboard_path"
 CODEX_MISSION_CONTROL_HOME="$hub" ./cmc dashboard --no-open >/dev/null
 grep -q 'Mission Control' "$dashboard_path"
-grep -q 'Surface lanes' "$dashboard_path"
+grep -q 'Lanes' "$dashboard_path"
 grep -q 'Approval packet' "$dashboard_path"
-grep -q 'Next thing to try' "$dashboard_path"
+grep -q 'Copy command' "$dashboard_path"
 
 for visual in \
   assets/visuals/hero-control-room.png \

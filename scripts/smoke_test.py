@@ -80,7 +80,7 @@ class FakeResponse:
 ENV_PREFIXES = ("CODEX_TELEGRAM_", "CODEX_RELAY_", "TELEGRAM_")
 ENV_EXACT = {"CODEX_BIN"}
 TEST_ENV = {
-    "CODEX_TELEGRAM_MODEL": "gpt-5.5",
+    "CODEX_TELEGRAM_MODEL": "",
     "CODEX_TELEGRAM_REASONING_EFFORT": "high",
     "CODEX_TELEGRAM_SPEED": "standard",
     "CODEX_TELEGRAM_REPLY_STYLE": "brief",
@@ -127,7 +127,7 @@ def run_tests() -> int:
             init_text = mission_control.init_hub(hub)
             assert_true("Mission Control initialized" in init_text, "expected hub init")
             assert_true((hub / "_ops" / "COMMAND_CENTER.md").exists(), "expected command center template")
-            assert_true((hub / "_ops" / "GPT55_OPERATING_SPEC.md").exists(), "expected GPT-5.5 operating spec")
+            assert_true((hub / "_ops" / "CODEX_OPERATING_SPEC.md").exists(), "expected Codex operating spec")
             discover_text = mission_control.discover_projects(hub, [str(project)], include_defaults=False)
             assert_true("added: 1" in discover_text, "expected one discovered project")
             missions = mission_control.load_missions(hub)
@@ -154,7 +154,7 @@ def run_tests() -> int:
             packet = mission_control.packet_text("TEST", "post", "x.com", "hello", "proof.png", "public", "now", "stop after post")
             assert_true("Exact action: post" in packet and "Stop condition" in packet, "expected complete packet")
             instructions = mission_control.instructions_text(hub)
-            assert_true("GPT-5.5 Operating Overlay" in instructions, "expected optimized instructions")
+            assert_true("Codex Operating Overlay" in instructions, "expected optimized instructions")
             doctor = mission_control.doctor_text(hub)
             assert_true("ops files: ok" in doctor, "expected doctor ok")
             adopt_preview = mission_control.adopt_agents(hub)

@@ -33,7 +33,7 @@ test -L "$hub/missions/RT-repo-two"
 test ! -e "$hub/missions/NO-notes-only"
 
 ./cmc --hub "$hub" adopt --write >/dev/null
-grep -q 'GPT-5.5 Mission Contract' "$one/AGENTS.md"
+grep -q 'Codex Mission Contract' "$one/AGENTS.md"
 ./cmc --hub "$hub" adopt > "$tmp/adopt.out"
 grep -q 'changed: 0' "$tmp/adopt.out"
 
@@ -90,6 +90,7 @@ grep -q 'missing GO_NO_GO.md' "$tmp/status_missing.out"
 CODEX_MISSION_CONTROL_HOME="$hub" ./scripts/status_ui.sh --no-open > "$tmp/dashboard.out"
 dashboard_path="$(cat "$tmp/dashboard.out")"
 test -s "$dashboard_path"
+CODEX_MISSION_CONTROL_HOME="$hub" ./cmc dashboard --no-open >/dev/null
 grep -q 'Your Codex control room' "$dashboard_path"
 grep -q 'Surface lanes' "$dashboard_path"
 grep -q 'Copy approval packet' "$dashboard_path"
